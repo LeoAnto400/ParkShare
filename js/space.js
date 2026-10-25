@@ -1,4 +1,4 @@
-import { loadSpaces } from './data.js';
+import { loadSpace } from './data.js';
 import { element, parkingImage } from './ui.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -16,13 +16,12 @@ async function load() {
   }
   status.textContent = 'Loading space details…';
   try {
-    const spaces = await loadSpaces();
-    const space = spaces.find(item => item.id === id);
+    const space = await loadSpace(id);
     if (!space) {
       status.textContent = 'This space could not be found. Follow “Back to search” to explore the demonstration listings.';
       return;
     }
-    document.title = `${space.title} — ParkNest`;
+    document.title = `${space.title} — ParkShare`;
     for (const field of ['title', 'address', 'description']) document.querySelector(`#${field}`).textContent = space[field];
     document.querySelector('#locality').textContent = `${space.locality} · ${space.city}`;
     document.querySelector('#price').textContent = `₹${space.price}`;
@@ -31,8 +30,8 @@ async function load() {
     document.querySelector('#rules').replaceChildren(...space.rules.map(rule => element('li', '', rule)));
     document.querySelector('#space').hidden = false;
     status.textContent = '';
-  } catch {
-    status.textContent = 'We couldn’t load this space. Check your local HTTP server and try again.';
+  } catch (error) {
+    status.textContent = error.message;
     retry.hidden = false;
   }
 }

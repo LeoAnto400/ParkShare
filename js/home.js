@@ -9,9 +9,9 @@ async function loadFeatured() {
   try {
     const spaces = await loadSpaces();
     renderCards(document.querySelector('#featured'), spaces.filter(space => space.featured));
-    status.textContent = '';
-  } catch {
-    status.textContent = 'We couldn’t load the featured spaces. Check your local server and try again.';
+    status.textContent = spaces.some(space => space.featured) ? '' : 'No featured spaces have been published yet.';
+  } catch (error) {
+    status.textContent = error.message;
     retry.hidden = false;
   }
 }

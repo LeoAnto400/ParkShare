@@ -62,11 +62,17 @@ async function load() {
   count.textContent = 'Finding spaces…';
   try {
     spaces = await loadSpaces();
+    // Owner prices may exceed the original demo range. Default/reset must include them.
+    const maximum = Math.max(100, ...spaces.map(space => Math.ceil(space.price / 5) * 5));
+    price.max = String(maximum);
+    price.defaultValue = String(maximum);
+    price.value = String(maximum);
+    document.querySelector('.range-ends span:last-child').textContent = `₹${maximum}`;
     loaded = true;
     updateResults();
-  } catch {
+  } catch (error) {
     count.textContent = 'Spaces unavailable';
-    status.textContent = 'We couldn’t load the parking spaces. Make sure the local HTTP server is running, then retry.';
+    status.textContent = error.message;
     retry.hidden = false;
   } finally {
     results.setAttribute('aria-busy', 'false');

@@ -7,7 +7,7 @@ export function element(tag, className, text) {
 
 export function parkingImage(photo, title) {
   const image = element('img');
-  image.alt = `${photo.alt} — illustrative photo for ${title}, not the actual property`;
+  image.alt = `${photo.alt} — ${title}`;
   image.loading = 'lazy';
   // Listen before setting src. The once option prevents a broken fallback loop.
   image.addEventListener('error', () => {
@@ -23,7 +23,7 @@ export function renderCards(container, spaces, search = '') {
   for (const space of spaces) {
     const card = element('article', 'card');
     const media = element('div', 'card-image');
-    media.append(parkingImage(space.photos[0], space.title), element('span', 'image-label', 'Demo space'));
+    media.append(parkingImage(space.photos[0], space.title), element('span', 'image-label', space.ownerId ? 'Owner listing' : 'Fictional sample'));
     const body = element('div', 'card-body');
     body.append(element('p', 'locality', `${space.locality} · ${space.city}`), element('h3', '', space.title), element('p', 'vehicles', space.vehicles.join(' / ')));
     const chips = element('div', 'chips');

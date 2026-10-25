@@ -1,0 +1,273 @@
+[
+  {
+    "id": "pn-001",
+    "title": "The Courtyard at Eshwar Nagar",
+    "locality": "Eshwar Nagar",
+    "city": "Manipal",
+    "price": 35,
+    "vehicles": [
+      "Car",
+      "Bike"
+    ],
+    "amenities": [
+      "Covered parking",
+      "Security"
+    ],
+    "featured": true,
+    "address": "12 Palm Lane, Eshwar Nagar, Manipal",
+    "description": "A sheltered residential courtyard with an easy approach from the neighborhood road.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        "alt": "An open parking area"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1000&q=80",
+        "alt": "Vehicles in a parking area"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-002",
+    "title": "Green Lane EV Space",
+    "locality": "Vidyaratna Nagar",
+    "city": "Manipal",
+    "price": 60,
+    "vehicles": [
+      "Car",
+      "SUV"
+    ],
+    "amenities": [
+      "EV charging",
+      "Covered parking",
+      "Security"
+    ],
+    "featured": true,
+    "address": "8 Green Lane, Vidyaratna Nagar, Manipal",
+    "description": "A spacious covered bay with a demonstration EV charging amenity and room for larger vehicles.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1000&q=80",
+        "alt": "Vehicles in a parking area"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1000&q=80",
+        "alt": "A parked car"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-003",
+    "title": "A Quiet Spot at Brahmagiri",
+    "locality": "Brahmagiri",
+    "city": "Udupi",
+    "price": 25,
+    "vehicles": [
+      "Car",
+      "Bike"
+    ],
+    "amenities": [
+      "Security"
+    ],
+    "featured": true,
+    "address": "21 Garden Cross, Brahmagiri, Udupi",
+    "description": "An open residential parking space set away from the main road.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1000&q=80",
+        "alt": "A parked car"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        "alt": "An open parking area"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-004",
+    "title": "Lakeside Two-Wheeler Nook",
+    "locality": "Manipal Lake",
+    "city": "Manipal",
+    "price": 10,
+    "vehicles": [
+      "Bike"
+    ],
+    "amenities": [
+      "Covered parking"
+    ],
+    "featured": false,
+    "address": "6 Lake View Lane, Manipal",
+    "description": "A compact covered nook designed exclusively for bikes and scooters.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        "alt": "An open parking area"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1000&q=80",
+        "alt": "Vehicles in a parking area"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-005",
+    "title": "End Point Garden Bay",
+    "locality": "End Point",
+    "city": "Manipal",
+    "price": 45,
+    "vehicles": [
+      "Car",
+      "SUV",
+      "Bike"
+    ],
+    "amenities": [
+      "EV charging"
+    ],
+    "featured": false,
+    "address": "14 Garden Road, End Point, Manipal",
+    "description": "An open-air garden-side bay with generous turning room and a demo charging facility.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1000&q=80",
+        "alt": "Vehicles in a parking area"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1000&q=80",
+        "alt": "A parked car"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-006",
+    "title": "Ajjarkad Covered Corner",
+    "locality": "Ajjarkad",
+    "city": "Udupi",
+    "price": 40,
+    "vehicles": [
+      "Car",
+      "SUV"
+    ],
+    "amenities": [
+      "Covered parking",
+      "Security"
+    ],
+    "featured": false,
+    "address": "9 Court Lane, Ajjarkad, Udupi",
+    "description": "A shaded ground-floor parking bay for cars and SUVs.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1000&q=80",
+        "alt": "A parked car"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        "alt": "An open parking area"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-007",
+    "title": "Malpe Coastal Driveway",
+    "locality": "Malpe",
+    "city": "Udupi",
+    "price": 30,
+    "vehicles": [
+      "Car",
+      "Bike",
+      "SUV"
+    ],
+    "amenities": [
+      "Security"
+    ],
+    "featured": false,
+    "address": "32 Coastal Lane, Malpe, Udupi",
+    "description": "A broad open driveway in a fictional coastal neighborhood property.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        "alt": "An open parking area"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1000&q=80",
+        "alt": "Vehicles in a parking area"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  },
+  {
+    "id": "pn-008",
+    "title": "Kunjibettu Charge & Park",
+    "locality": "Kunjibettu",
+    "city": "Udupi",
+    "price": 80,
+    "vehicles": [
+      "Car",
+      "SUV"
+    ],
+    "amenities": [
+      "EV charging",
+      "Covered parking",
+      "Security"
+    ],
+    "featured": false,
+    "address": "5 Orchard Cross, Kunjibettu, Udupi",
+    "description": "A covered parking bay with charging and security amenities for demonstrating filters.",
+    "photos": [
+      {
+        "src": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1000&q=80",
+        "alt": "Vehicles in a parking area"
+      },
+      {
+        "src": "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1000&q=80",
+        "alt": "A parked car"
+      }
+    ],
+    "rules": [
+      "Park within the marked bay and keep the entrance clear.",
+      "Only the listed vehicle types are supported.",
+      "Do not leave valuables in your vehicle.",
+      "This is a fictional listing; do not travel to this address."
+    ]
+  }
+]

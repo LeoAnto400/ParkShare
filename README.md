@@ -18,7 +18,7 @@ External links use [Google Maps URLs](https://developers.google.com/maps/documen
 4. Cancel an upcoming paid test reservation: it becomes `demo_refunded`, moves out of pending totals and remains in the breakdown. No real money moves.
 5. Use a completed confirmed test reservation to save, edit and delete a review; watch the public preview average/count update. Reload search to see the batched card summaries. A normal new booking needs at least 30 minutes and must actually end before review; prepare this before class, rather than changing the browser clock or weakening checks.
 
-Presentation examples: `review.html` (semantic form/labels), `css/styles.css` (responsive earnings Grid and scrollable table), `js/reviews.js` (DOM/textContent and events), `js/data.js` (batched fetch AJAX), `js/earnings.js` (filters and paginated rendering), `js/location.js` (URL encoding and clipboard fallback), and `sql/006_earnings_reviews_locations.sql` (RLS, guarded functions, aggregate FILTER/EXISTS and timezone boundaries).
+Presentation examples: `pages/review.html` (semantic form/labels), `css/styles.css` (responsive earnings Grid and scrollable table), `js/reviews.js` (DOM/textContent and events), `js/data.js` (batched fetch AJAX), `js/earnings.js` (filters and paginated rendering), `js/location.js` (URL encoding and clipboard fallback), and `sql/006_earnings_reviews_locations.sql` (RLS, guarded functions, aggregate FILTER/EXISTS and timezone boundaries).
 
 ### Local checks for this addition
 
@@ -46,16 +46,16 @@ python scripts/configure.py
 python -m http.server 5500 --bind 127.0.0.1
 ```
 
-Open http://127.0.0.1:5500/index.html. Keep the terminal running; Ctrl+C stops it. If only the Windows Python launcher is available, replace `python` with `py`. If the port is occupied, use 5501 in both the command and URL.
+Open http://127.0.0.1:5500/pages/index.html. Keep the terminal running; Ctrl+C stops it. If only the Windows Python launcher is available, replace `python` with `py`. If the port is occupied, use 5501 in both the command and URL.
 
 Do not double-click HTML files: file:// cannot reliably load JSON or ES modules. The command serves static files only, not an application backend. Demo mode requires no credentials, npm install, build, or environment variables. For optional Supabase mode, follow [SUPABASE_SETUP.md](SUPABASE_SETUP.md) to create a NEW, separate project; never reuse the old ParkNest resources.
 
 ## Files to study
 
 ```text
-index.html                  Home, semantic sections, native GET search form
-search.html                 Labeled filters and results containers
-space.html                  Detail structure and informational booking panel
+pages/index.html                  Home, semantic sections, native GET search form
+pages/search.html                 Labeled filters and results containers
+pages/space.html                  Detail structure and informational booking panel
 css/styles.css              Variables, Flexbox, Grid, responsive media queries
 js/config.js                Demo/Supabase switch and NEW-project placeholders
 js/data.js                  Shared fetch, config/data validation, REST mapping
@@ -89,7 +89,7 @@ Trace AJAX: page imports `loadSpaces()` → `fetch()` requests JSON → `await` 
 1. Submit Manipal from home: URL contains `location=Manipal`, four results. Udupi has four; Malpe has one.
 2. In Manipal, select EV and covered: only Green Lane remains. Select Bike: no results. Reset: four Manipal results and location retained.
 3. Set Manipal maximum price to ₹35: Courtyard and Lakeside remain. Sort ascending (₹10, ₹35) and descending (₹35, ₹10).
-4. Follow a card and Back to search. Try `space.html?id=pn-001`, `space.html?id=unknown`, and `space.html`.
+4. Follow a card and Back to search. Try `pages/space.html?id=pn-001`, `pages/space.html?id=unknown`, and `pages/space.html`.
 5. Block `*spaces.json*` in browser DevTools and reload search. Unblock and click Retry loading: results return without a reload. Throttle the network to inspect the loading state.
 6. Block `images.unsplash.com` and reload: local fallback illustrations replace photos; details remain usable.
 7. Inspect at 375px, 768px, and 1440px widths. Check no horizontal overflow, stacked grids, and readable controls. Tab through controls and activate them with the keyboard.
@@ -114,7 +114,7 @@ Current-stage checks passed: JavaScript syntax, mocked demo and REST reads, conf
 
 ## Authentication and owner stage
 
-New pages: `signup.html`, `login.html`, and `dashboard.html`. Signup collects name/email/password/confirm-password. Before testing a new account, manually disable **Confirm email** in the NEW project’s Authentication → Sign In / Providers → Email settings and save. A real signup session goes directly to the dashboard; no session shows a configuration message. No verification-email, OTP, magic-link, resend, password-reset, invitation, or welcome-email flow is implemented. SDK-managed sessions restore automatically. Signed-out dashboard visitors go to login, which returns to the dashboard. Demo mode shows a browse-only explanation without fake login or saving.
+New pages: `pages/signup.html`, `pages/login.html`, and `pages/dashboard.html`. Signup collects name/email/password/confirm-password. Before testing a new account, manually disable **Confirm email** in the NEW project’s Authentication → Sign In / Providers → Email settings and save. A real signup session goes directly to the dashboard; no session shows a configuration message. No verification-email, OTP, magic-link, resend, password-reset, invitation, or welcome-email flow is implemented. SDK-managed sessions restore automatically. Signed-out dashboard visitors go to login, which returns to the dashboard. Demo mode shows a browse-only explanation without fake login or saving.
 
 Run `sql/003_owners_and_storage.sql` manually in the NEW project, following the owner-stage instructions in [SUPABASE_SETUP.md](SUPABASE_SETUP.md). It preserves samples, adds ownership, replaces listing RLS policies, and configures the public parking-images bucket with user-folder writes and 5 MiB JPEG/PNG/WebP limits.
 
@@ -144,7 +144,7 @@ Parking charge = round(hourly rate × duration minutes / 60, 2). Service fee = r
 
 Use details → select times/vehicle → Check availability → review database quote → Confirm reservation. Login is required only to confirm. The listing/times/vehicle survive the login/signup flow in a same-site return URL, and must be checked again after login. Registration is not included in URLs; enter it again if necessary. A unique key and exact request are retained in sessionStorage until the attempt's result is known. Passwords and tokens are never stored by this code. After an uncertain network response use **Retry this reservation**, not a new attempt. Recovery requires the original signed-in account. Session storage is tab-specific; keep the tab open until resolved. A recovery of a known attempt may succeed after arrival has passed because it returns the original reservation, not a new one.
 
-`confirmation.html?booking=...` reloads persisted confirmation through RLS. Drivers can read their own bookings; owners can read bookings for their listings. Other users cannot read them. The page states “Reservation confirmed. No payment has been collected.” The next migration adds a clearly labelled payment simulation; it never collects money. Listing deletion is rejected when any booking history exists; unpublish the listing instead. This retains even cancelled history and does not automatically cancel confirmed reservations.
+`pages/confirmation.html?booking=...` reloads persisted confirmation through RLS. Drivers can read their own bookings; owners can read bookings for their listings. Other users cannot read them. The page states “Reservation confirmed. No payment has been collected.” The next migration adds a clearly labelled payment simulation; it never collects money. Listing deletion is rejected when any booking history exists; unpublish the listing instead. This retains even cancelled history and does not automatically cancel confirmed reservations.
 
 ### Booking study files
 
@@ -160,7 +160,7 @@ Run `node --test tests/*.test.mjs` (Node is only needed for tests, not running t
 
 ## Demo checkout and reservation management (migration 005)
 
-New pages: `my-bookings.html` and `checkout.html`. Signed-in navigation includes My bookings. Confirmation links lead to checkout or a simulated receipt. The owner dashboard now includes a read-only reservations section with listing/category filters and counts from fetched records. Snapshot titles/addresses keep reservations viewable after a space is unpublished. Listings with history still cannot be deleted.
+New pages: `pages/my-bookings.html` and `pages/checkout.html`. Signed-in navigation includes My bookings. Confirmation links lead to checkout or a simulated receipt. The owner dashboard now includes a read-only reservations section with listing/category filters and counts from fetched records. Snapshot titles/addresses keep reservations viewable after a space is unpublished. Listings with history still cannot be deleted.
 
 **Demo payment — no real money is collected.** Checkout has only two explicit actions: Simulate successful payment and Simulate failed payment. It collects no cards, CVVs, UPI IDs or bank details, and uses no payment gateway. Reservation status stays confirmed before/after failure. Failed payments can be retried; the spot stays reserved until cancellation. There are no pending-payment holds or automatic expiry.
 

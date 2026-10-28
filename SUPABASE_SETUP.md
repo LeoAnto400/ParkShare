@@ -27,7 +27,7 @@ The site starts in local demo mode. Do not reuse, query, migrate, or modify the 
     python -m http.server 5500 --bind 127.0.0.1
     ```
 
-    Open [the website](http://127.0.0.1:5500/index.html). Use `py` if that is your Python launcher. Keep the terminal running. Do not double-click HTML files; modules and fetch require HTTP.
+    Open [the website](http://127.0.0.1:5500/pages/index.html). Use `py` if that is your Python launcher. Keep the terminal running. Do not double-click HTML files; modules and fetch require HTTP.
 12. Open browser DevTools → **Network → Fetch/XHR**, then reload. Inspect the `parking_spaces` request and confirm HTTP 200 with eight rows. Its hostname MUST match the NEW project's URL: `https://<new-project-reference>.supabase.co/rest/v1/parking_spaces`. It includes `published=eq.true`; details also include an ID filter and `limit=1`. The publishable key is sent in `apikey`, not a Bearer JWT header. Seeing `spaces.json` means demo mode is active or config is cached; hard reload after editing.
 
 ## Permissions and manual verification
@@ -62,8 +62,8 @@ Official references: [API keys](https://supabase.com/docs/guides/getting-started
 4. In the NEW ParkShare project, open **Authentication → Sign In / Providers → Email** (some dashboard versions label this Providers or Sign-in methods). Keep Email/password signup enabled, turn **Confirm email OFF**, and **Save** before creating a new test account. Set minimum password length to at least 8. This is a manual dashboard change; frontend code cannot disable project email confirmation. If left enabled, Supabase itself may send a signup email even though this app has no send/resend action.
 5. No email-confirmation redirect URL is required for this password-only demo. You can keep Site URL set to `http://127.0.0.1:5500`; old login redirect allowlist entries are unused. Signup no longer supplies emailRedirectTo, and the SDK does not consume URL-based sessions. SDK session persistence and automatic refresh remain enabled. Do not configure OTP, magic-link, reset-password, invitation, or custom welcome-email flows.
 6. Set `.env` to Supabase mode with ONLY the NEW project's URL and publishable key. Run `python scripts/configure.py`, then `python -m http.server 5500 --bind 127.0.0.1`. Hard-refresh. Do not share tokens, passwords, or secret keys.
-7. After saving Confirm email OFF, open signup.html and register a **new** test User A with an email address you control. Signup should return a real session and open the owner dashboard immediately, with no email step. Repeat for a new User B in a separate private browser profile. If signup returns no session, the app shows the configuration message and does not redirect or resend emails. Check the setting in the NEW project and test with a fresh account; existing registered users should use Log in. Previously unconfirmed accounts are not repaired automatically. Never put passwords in source files.
-8. As A, add a space and upload a small JPEG/PNG/WebP. Save as draft, edit it, publish it, refresh search, unpublish it, and delete it with confirmation. Reopen the browser to check session restoration. Log out and visit dashboard.html: it should route to login. Demo mode should keep browsing functional and explain that auth/writes are unavailable.
+7. After saving Confirm email OFF, open pages/signup.html and register a **new** test User A with an email address you control. Signup should return a real session and open the owner dashboard immediately, with no email step. Repeat for a new User B in a separate private browser profile. If signup returns no session, the app shows the configuration message and does not redirect or resend emails. Check the setting in the NEW project and test with a fresh account; existing registered users should use Log in. Previously unconfirmed accounts are not repaired automatically. Never put passwords in source files.
+8. As A, add a space and upload a small JPEG/PNG/WebP. Save as draft, edit it, publish it, refresh search, unpublish it, and delete it with confirmation. Reopen the browser to check session restoration. Log out and visit pages/dashboard.html: it should route to login. Demo mode should keep browsing functional and explain that auth/writes are unavailable.
 
 ### Two-user permissions checklist (live verification required)
 
@@ -155,7 +155,7 @@ References: [PostgreSQL range exclusion constraints](https://www.postgresql.org/
    python -m http.server 5500 --bind 127.0.0.1
    ```
 
-   Open http://127.0.0.1:5500 and hard-refresh. Authenticated navigation now includes My bookings. In demo mode these pages explain that persistence requires Supabase.
+   Open http://127.0.0.1:5500/pages/index.html and hard-refresh. Authenticated navigation now includes My bookings. In demo mode these pages explain that persistence requires Supabase.
 
 ### Walkthrough: one owner and two drivers
 
@@ -199,7 +199,7 @@ Local tests passed for category boundaries, eligibility helpers, safe destinatio
 1. Select the dedicated **NEW ParkShare** project in Supabase. Verify its name/project reference against your own `.env`; never use the old ParkNest project.
 2. In **Authentication → Sign In / Providers → Email**, turn **Confirm email OFF** and save before testing a new email/password signup. If the dashboard places the toggle under Authentication settings, use the same Confirm email toggle in this NEW project. Keep Email/password enabled. No OTP, magic-link, reset, invitation, resend or welcome-email flow is added.
 3. In SQL Editor, ensure `001_schema.sql`, `002_seed.sql`, `003_owners_and_storage.sql`, `004_reservations.sql`, then `005_demo_payments_and_management.sql` have already succeeded. For an existing project do not rerun earlier migrations unnecessarily. Run the complete `sql/006_earnings_reviews_locations.sql` once, manually. It is transactional and adds columns/table/functions, not a database reset. If it succeeds, do not rerun it; if it rolls back, fix the reported issue first. It also requests a PostgREST schema refresh.
-4. Keep `.env` configured with `DATA_SOURCE=supabase`, this NEW project's HTTPS URL and its browser-safe `sb_publishable_...` key. Never add secret/service-role keys or passwords. Run `python scripts/configure.py`, then `python -m http.server 5500 --bind 127.0.0.1`; open `http://127.0.0.1:5500/index.html`. Keep your existing `.env` keys private; they were not modified by this addition.
+4. Keep `.env` configured with `DATA_SOURCE=supabase`, this NEW project's HTTPS URL and its browser-safe `sb_publishable_...` key. Never add secret/service-role keys or passwords. Run `python scripts/configure.py`, then `python -m http.server 5500 --bind 127.0.0.1`; open `http://127.0.0.1:5500/pages/index.html`. Keep your existing `.env` keys private; they were not modified by this addition.
 5. Refresh the website. Use separate owner and driver accounts/browser profiles. For offline JSON browsing, explicitly set `DATA_SOURCE=demo` and rerun the config script; earnings and review persistence are unavailable, without fake saves or fake ratings.
 
 ### Data and permission behavior

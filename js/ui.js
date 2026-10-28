@@ -11,7 +11,7 @@ export function parkingImage(photo, title) {
   image.loading = 'lazy';
   // Listen before setting src. The once option prevents a broken fallback loop.
   image.addEventListener('error', () => {
-    image.src = 'assets/parking-fallback.svg';
+    image.src = new URL('../assets/parking-fallback.svg', import.meta.url).href;
     image.alt = `Parking illustration; photo unavailable for ${title}`;
   }, { once: true });
   image.src = photo.src;

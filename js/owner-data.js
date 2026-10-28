@@ -33,7 +33,10 @@ async function request(method, id, body) {
       'Content-Type': 'application/json', Prefer: 'return=representation'
     }, ...(body ? { body: JSON.stringify(body) } : {}) });
   } catch { throw new Error('Network failure. Your changes were not confirmed. Reload your listings before retrying a save.'); }
-  if (!response.ok) throw new Error(`Listing request failed (HTTP ${response.status}). Check your session and run migration 003 in the new project.`);
+  if (!response.ok) {
+    if (method === 'DELETE' && response.status === 409) throw new Error('This listing has booking history and cannot be deleted. Unpublish it to stop new reservations; existing bookings are retained.');
+    throw new Error(`Listing request failed (HTTP ${response.status}). Check your session and run the required migrations in the new project.`);
+  }
   let rows;
   try { rows = await response.json(); } catch { throw new Error('Invalid response from the listing service. Refresh before retrying.'); }
   if (!Array.isArray(rows) || rows.some(row => !row || row.owner_id !== current.user.id)) throw new Error('Unexpected listing response. Refresh and sign in again.');

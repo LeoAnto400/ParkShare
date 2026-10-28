@@ -1,5 +1,6 @@
 import { loadSpace } from './data.js';
 import { element, parkingImage } from './ui.js';
+import { setupBooking } from './booking.js';
 
 const params = new URLSearchParams(window.location.search);
 const id = params.get('id');
@@ -29,6 +30,7 @@ async function load() {
     for (const field of ['vehicles', 'amenities']) document.querySelector(`#${field}`).replaceChildren(...space[field].map(text => element('span', 'chip', text)));
     document.querySelector('#rules').replaceChildren(...space.rules.map(rule => element('li', '', rule)));
     document.querySelector('#space').hidden = false;
+    setupBooking(space);
     status.textContent = '';
   } catch (error) {
     status.textContent = error.message;

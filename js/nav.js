@@ -10,6 +10,9 @@ function draw(current) {
   link.href = current ? 'dashboard.html' : 'login.html';
   account.append(link);
   if (current) {
+    const bookings = element('a', '', 'My bookings');
+    bookings.href = 'my-bookings.html';
+    account.append(bookings);
     const logout = element('button', 'link-button', 'Log out');
     logout.type = 'button';
     logout.addEventListener('click', async () => {

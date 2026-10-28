@@ -10,7 +10,7 @@ export async function getClient() {
   if (!clientPromise) {
     clientPromise = import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/+esm')
       .then(({ createClient }) => createClient(url.href, SUPABASE_PUBLISHABLE_KEY,
-        { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }))
+        { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }))
       .catch(() => { clientPromise = null; throw new Error('Could not load the authentication SDK. Check your connection and reload.'); });
   }
   return clientPromise;

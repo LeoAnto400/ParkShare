@@ -50,7 +50,7 @@ function render() {
     publish.addEventListener('click', () => mutate(() => updateOwnedSpace(row.id, { published: !row.published }), row.published ? 'Space unpublished.' : 'Space published. Refresh search to see it.'));
     const remove = element('button', 'secondary', 'Delete');
     remove.addEventListener('click', () => {
-      if (window.confirm(`Delete “${row.title}”? This removes the listing permanently. Uploaded photos are retained for manual cleanup.`)) {
+      if (window.confirm(`Delete “${row.title}”? Listings with booking history cannot be deleted; unpublish them instead. Otherwise deletion is permanent. Uploaded photos are retained for manual cleanup.`)) {
         mutate(() => deleteOwnedSpace(row.id), 'Listing deleted.');
       }
     });

@@ -23,7 +23,8 @@ test('data module: demo, REST, validation, and failure behavior', async () => {
   let payload = samples;
   globalThis.fetch = async (url, options) => {
     calls.push({ url: new URL(url), options });
-    return { ok: true, json: async () => payload };
+    return { ok: true, json: async () => new URL(url).pathname.endsWith('/rating_summaries')
+      ? JSON.parse(options.body).p_space_ids.map(space_id => ({space_id,review_count:2,average_rating:4.5})) : payload };
   };
   try {
     const demo = await moduleFor();
@@ -47,15 +48,18 @@ test('data module: demo, REST, validation, and failure behavior', async () => {
     const remote = await moduleFor('supabase');
     payload = samples.map(row);
     assert.deepEqual((await remote.loadSpaces()).map(s => s.price), samples.map(s => s.price));
-    const request = calls.at(-1);
+    const request = calls.findLast(c => c.url.pathname.endsWith('/parking_spaces'));
+    const ratingCall = calls.at(-1);
+    assert.equal(ratingCall.url.pathname, '/rest/v1/rpc/rating_summaries');
+    assert.equal(JSON.parse(ratingCall.options.body).p_space_ids.length, 8);
     assert.equal(request.url.hostname, 'newparksharetest.supabase.co');
     assert.equal(request.url.searchParams.get('published'), 'eq.true');
     assert.equal(request.options.headers.apikey, 'sb_publishable_testonly');
     assert.equal(request.options.headers.Authorization, undefined);
     payload = [row(samples[0])];
     assert.equal((await remote.loadSpace('pn-001')).id, 'pn-001');
-    assert.equal(calls.at(-1).url.searchParams.get('id'), 'eq.pn-001');
-    assert.equal(calls.at(-1).url.searchParams.get('limit'), '1');
+    assert.equal(calls.findLast(c => c.url.pathname.endsWith('/parking_spaces')).url.searchParams.get('id'), 'eq.pn-001');
+    assert.equal(calls.findLast(c => c.url.pathname.endsWith('/parking_spaces')).url.searchParams.get('limit'), '1');
     payload = [];
     assert.deepEqual(await remote.loadSpaces(), []);
     assert.equal(await remote.loadSpace('missing'), null);

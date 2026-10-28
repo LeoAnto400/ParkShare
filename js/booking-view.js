@@ -1,6 +1,7 @@
 import { element } from './ui.js';
 import { indianDisplay, money } from './booking-rules.js';
 import { paymentLabels } from './booking-state.js';
+import { locationActions } from './location.js';
 
 export function bookingDetails(booking) {
   const details = element('dl', 'reservation-details');
@@ -13,7 +14,10 @@ export function bookingDetails(booking) {
     ['Reservation', booking.status], ['Demo payment', paymentLabels[booking.payment_status] || 'Unavailable — run migration 005']
   ];
   for (const [label, value] of values) details.append(element('dt', '', label), element('dd', '', value));
-  return details;
+  const section = element('div');
+  section.append(details, locationActions({ address: booking.space_address, locality: booking.space_locality,
+    city: booking.space_city, latitude: booking.space_latitude, longitude: booking.space_longitude }));
+  return section;
 }
 export function historyView(events) {
   const section = element('section', 'payment-history');

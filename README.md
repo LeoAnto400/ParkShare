@@ -1,5 +1,37 @@
 # ParkShare — parking discovery and Supabase reads
 
+## Current addition: demo earnings, reviews and directions
+
+Migration **006** extends the existing application. Run it manually after 001–005 in the **NEW ParkShare project**; see the final section of [SUPABASE_SETUP.md](SUPABASE_SETUP.md). Existing bookings, payment history and ownerless samples are retained. The agent does not apply remote migrations.
+
+- **Owner dashboard → Demo earnings:** stored parking subtotal belongs to the owner; the 5% fee is added to the driver's bill and is shown separately. Completed confirmed demo-paid bookings count as earnings. Upcoming/active paid amounts remain pending completion. Refunds, unpaid, failed and cancelled bookings are excluded. Counts use one row per booking, never payment attempts. Arrival-date filters include full days in Asia/Kolkata; totals cover all matches and the breakdown is paged.
+- **My bookings → Review / edit review:** available after a confirmed reservation ends. Save edits the single review for that booking; delete removes it. Only its driver may do either. A labelled rating select and a 10–1000-character comment are required. Public views show rating, comment and date with “Verified booking”, without account or booking IDs. Saving/deleting refreshes the public preview; other open pages have a Refresh reviews button or can be reloaded. Unpublished listings retain their reviews but hide them publicly.
+- **Owner form → latitude/longitude:** optional pair. Right-click the precise parking entrance in Google Maps and copy its latitude/longitude; verify it yourself. No coordinates are guessed. Detail and booking pages offer directions, map search and address copying. New bookings retain a location snapshot; older bookings retain the original address, with locality/city backfilled from the listing when 006 runs. No old coordinates are invented.
+
+External links use [Google Maps URLs](https://developers.google.com/maps/documentation/urls/get-started), which require no API key. Google determines or asks for the origin. ParkShare does not request browser location or calculate distances. Fictional sample addresses remain labelled demo data and should not be used for actual travel.
+
+### Short class demonstration
+
+1. Start the HTTP server using the commands below. In demo mode, browse/search, open a space, show “No reviews yet”, copy its address and inspect the directions URL. Dashboard/review persistence is explicitly unavailable.
+2. In Supabase mode, sign in as an owner, add/edit a listing with both coordinates, and publish it. Sign in as a separate driver in another browser/profile.
+3. Reserve that space, simulate failure then success, and show one pending owner amount in the owner's earnings section. Apply a listing and arrival-date filter. Explain `subtotal + fee = driver total`, with no second fee deduction.
+4. Cancel an upcoming paid test reservation: it becomes `demo_refunded`, moves out of pending totals and remains in the breakdown. No real money moves.
+5. Use a completed confirmed test reservation to save, edit and delete a review; watch the public preview average/count update. Reload search to see the batched card summaries. A normal new booking needs at least 30 minutes and must actually end before review; prepare this before class, rather than changing the browser clock or weakening checks.
+
+Presentation examples: `review.html` (semantic form/labels), `css/styles.css` (responsive earnings Grid and scrollable table), `js/reviews.js` (DOM/textContent and events), `js/data.js` (batched fetch AJAX), `js/earnings.js` (filters and paginated rendering), `js/location.js` (URL encoding and clipboard fallback), and `sql/006_earnings_reviews_locations.sql` (RLS, guarded functions, aggregate FILTER/EXISTS and timezone boundaries).
+
+### Local checks for this addition
+
+Run each `tests/*.test.mjs` with Node (for example `node tests/reviews-location.test.mjs`). A PostgreSQL installation can run the disposable local integration suite:
+
+```powershell
+python tests/run_sql_checks.py --pg-bin "C:\Program Files\PostgreSQL\17\bin"
+```
+
+That script creates and stops its own temporary loopback database, applies 001–006, and uses minimal auth/storage stubs. It never reads `.env` or contacts Supabase. Hosted JWT, PostgREST, Storage and browser sessions still require the manual checks in the setup guide.
+
+Verified locally for this addition: 16 JavaScript tests, all six migrations on disposable PostgreSQL 17, earnings/IST boundaries and owner isolation, review guards/public privacy/edit/delete, coordinate constraints/snapshots, and booking/payment-retry/cancellation regression. Browser smoke checks covered demo search, detail directions/review empty state, and dashboard unavailable states. Hosted Supabase checks remain pending; no remote migration was executed.
+
 A Web Technologies class demonstration built with semantic HTML5, CSS3, and vanilla JavaScript. Eight fictional parking listings around Manipal and Udupi demonstrate finding and comparing spaces. Addresses are invented; availability is not checked. This separate rebuild lives entirely in ParkShare.
 
 ## Run
@@ -70,7 +102,7 @@ The image fallback was also verified in the browser by temporarily assigning a m
 
 ## Remaining stages
 
-Real payments, admin features, reviews, earnings, and maps remain deferred. Reservations require a real Supabase response; demo mode never shows fake success. PHP and frontend frameworks are prohibited.
+Real payments, withdrawals, admin features and embedded maps remain deferred. Migration 006 adds demo earnings, verified reviews and external directions links. Reservations require a real Supabase response; demo mode never shows fake success. PHP and frontend frameworks are prohibited.
 
 ## Current data stage
 

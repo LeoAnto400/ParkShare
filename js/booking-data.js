@@ -3,6 +3,9 @@ import { configuration } from './data.js';
 import { isDemo, requireSession } from './auth.js';
 
 const messages = {
+  REVIEW_INELIGIBLE: 'Only a completed, confirmed reservation can be reviewed.',
+  INVALID_REVIEW: 'Choose an integer rating from 1 to 5 and write 10–1000 characters after trimming.',
+  INVALID_EARNINGS_FILTER: 'Check the arrival date range; the start must not be after the end.',
   INVALID_INTERVAL: 'Choose future times for a duration between 30 minutes and 7 days.',
   SPACE_UNAVAILABLE: 'This space is no longer published. Please choose another space.',
   UNSUPPORTED_VEHICLE: 'This space does not support the selected vehicle.',
@@ -29,11 +32,12 @@ export async function request(path, body, authenticated = false) {
       method: body ? 'POST' : 'GET', headers, ...(body ? { body: JSON.stringify(body) } : {})
     });
   } catch { throw new Error('Connection interrupted. If confirming, use Retry this reservation to retrieve the same attempt. Do not start a new attempt until its result is known.'); }
+  if (response.ok && response.status === 204) return null; // Void RPCs (review deletion) have no JSON body.
   let data;
   try { data = await response.json(); } catch { throw new Error('Unexpected response. Retry the same reservation attempt if confirmation was interrupted.'); }
   if (!response.ok) {
     const code = Object.keys(messages).find(key => data?.message === key);
-    const error = new Error(messages[code] || `Reservation request failed (HTTP ${response.status}). Check your session and migrations 004–005; retry the same attempt if its outcome is unknown.`);
+    const error = new Error(messages[code] || `Data request failed (HTTP ${response.status}). Check your session and migrations 004–006; retry the same attempt if its outcome is unknown.`);
     error.code = code || String(response.status);
     throw error;
   }

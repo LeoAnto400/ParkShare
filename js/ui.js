@@ -26,6 +26,8 @@ export function renderCards(container, spaces, search = '') {
     media.append(parkingImage(space.photos[0], space.title), element('span', 'image-label', space.ownerId ? 'Owner listing' : 'Fictional sample'));
     const body = element('div', 'card-body');
     body.append(element('p', 'locality', `${space.locality} · ${space.city}`), element('h3', '', space.title), element('p', 'vehicles', space.vehicles.join(' / ')));
+    body.append(element('p', 'rating-summary', space.ratingsUnavailable ? 'Ratings unavailable — refresh to retry'
+      : space.rating?.review_count > 0 ? `${Number(space.rating.average_rating).toFixed(1)} / 5 · ${space.rating.review_count} reviews` : 'No reviews yet'));
     const chips = element('div', 'chips');
     for (const amenity of space.amenities) chips.append(element('span', 'chip', amenity));
     const bottom = element('div', 'card-bottom');

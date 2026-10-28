@@ -27,7 +27,7 @@ function openEditor(row = null) {
   createId = crypto.randomUUID(); // Retain ID across failed retries to prevent duplicate creation.
   form.reset();
   formStatus.textContent = '';
-  for (const name of ['title', 'description', 'locality', 'city', 'address', 'hourly_price']) form.elements[name].value = row?.[name] ?? '';
+  for (const name of ['title', 'description', 'locality', 'city', 'address', 'hourly_price', 'latitude', 'longitude']) form.elements[name].value = row?.[name] ?? '';
   form.elements.parking_rules.value = row?.parking_rules.join('\n') ?? '';
   form.elements.amenities.value = row?.amenities.join('\n') ?? '';
   form.querySelectorAll('[name=vehicle]').forEach(input => { input.checked = !!row?.supported_vehicles.includes(input.value); });
@@ -89,6 +89,8 @@ form.addEventListener('submit', async event => {
     title: values.get('title').trim(), description: values.get('description').trim(),
     locality: values.get('locality').trim(), city: values.get('city').trim(), address: values.get('address').trim(),
     hourly_price: Number(values.get('hourly_price')), supported_vehicles: values.getAll('vehicle'),
+    latitude: values.get('latitude').trim() === '' ? null : Number(values.get('latitude')),
+    longitude: values.get('longitude').trim() === '' ? null : Number(values.get('longitude')),
     amenities: lines('amenities'), parking_rules: lines('parking_rules'), published: form.elements.published.checked
   };
   const photo = form.elements.photo.files[0];

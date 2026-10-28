@@ -3,6 +3,7 @@ import { loadMyBookings, loadOwnerReservations, cancelBooking } from './manageme
 import { bookingCategory, canCancel, canPay } from './booking-state.js';
 import { bookingDetails } from './booking-view.js';
 import { element } from './ui.js';
+import { eligibleReview } from './reviews.js';
 
 const root = document.querySelector('#reservations-section');
 const owner = root.dataset.audience === 'owner';
@@ -31,6 +32,11 @@ function draw() {
     const details = element('a', 'button secondary', 'View booking details');
     details.href = `confirmation.html?${new URLSearchParams({ booking: booking.id })}`;
     actions.append(details);
+    if (!owner && eligibleReview(booking)) {
+      const review = element('a', 'button secondary', 'Review / edit review');
+      review.href = `review.html?${new URLSearchParams({ booking: booking.id })}`;
+      actions.append(review);
+    }
     if (!owner && canPay(booking)) {
       const pay = element('a', 'button', booking.payment_status === 'demo_failed' ? 'Retry demo payment' : 'Complete demo payment');
       pay.href = `checkout.html?${new URLSearchParams({ booking: booking.id })}`;

@@ -1,6 +1,8 @@
 import { loadSpace } from './data.js';
 import { element, parkingImage } from './ui.js';
 import { setupBooking } from './booking.js';
+import { locationActions } from './location.js';
+import { showReviews } from './reviews.js';
 
 const params = new URLSearchParams(window.location.search);
 const id = params.get('id');
@@ -32,6 +34,13 @@ async function load() {
     document.querySelector('#space').hidden = false;
     setupBooking(space);
     status.textContent = '';
+    document.querySelector('#location-actions')?.remove();
+    const directions = locationActions(space); directions.id = 'location-actions';
+    document.querySelector('#address').after(directions);
+    document.querySelector('#reviews')?.remove();
+    const reviews = element('section'); reviews.id = 'reviews';
+    document.querySelector('#space').append(reviews);
+    await showReviews(space, reviews);
   } catch (error) {
     status.textContent = error.message;
     retry.hidden = false;

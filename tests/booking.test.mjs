@@ -58,6 +58,8 @@ test('booking AJAX sends only requested RPC fields, keeps retries identical, and
     assert.equal(calls[1].options.body,calls[2].options.body);
     assert.equal(calls[1].options.headers.Authorization,'Bearer test-token');
     assert.equal(JSON.parse(calls[1].options.body).driver_id,undefined);
+    globalThis.fetch=async()=>({ok:true,status:204,json:async()=>{throw new Error('No body');}});
+    assert.equal(await api.request('rpc/delete_booking_review',{p_booking_id:'test-booking'},true),null);
     globalThis.fetch=async()=>({ok:false,status:400,json:async()=>({message:'SLOT_TAKEN'})});
     await assert.rejects(api.reserve(attempt),error=>error.code==='SLOT_TAKEN');
     globalThis.fetch=async()=>({ok:false,status:400,json:async()=>({message:'PRICE_CHANGED'})});

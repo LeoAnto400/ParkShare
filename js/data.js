@@ -50,6 +50,7 @@ function mapRow(row) {
   return {
     id: row.id, title: row.title, description: row.description,
     locality: row.locality, city: row.city, address: row.address,
+    latitude: row.latitude ?? null, longitude: row.longitude ?? null,
     ownerId: row.owner_id || null, price: row.hourly_price, vehicles: row.supported_vehicles,
     amenities: row.amenities, rules: row.parking_rules, featured: row.featured,
     photos: row.image_urls.map(src => ({ src, alt: row.owner_id ? 'Owner-provided parking photo' : 'Illustrative sample photo, not the actual property' }))
@@ -76,6 +77,24 @@ async function readSpaces(id) {
   if (!Array.isArray(data)) throw new Error('Expected a list of parking spaces from the data source.');
   const spaces = data.map(item => validate(base ? mapRow(item) : item));
   if (new Set(spaces.map(space => space.id)).size !== spaces.length) throw new Error('Listing IDs must be unique.');
+  // Batch rating reads in groups of 100, never one AJAX request per card.
+  if (base) {
+    try {
+      for (let offset = 0; offset < spaces.length; offset += 100) {
+        const chunk = spaces.slice(offset, offset + 100);
+        const ratings = await requestJSON(new URL('/rest/v1/rpc/rating_summaries', base), {
+          method: 'POST', headers: { apikey: SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_space_ids: chunk.map(space => space.id) })
+        });
+        if (!Array.isArray(ratings) || ratings.some(r => !Number.isInteger(r.review_count) || r.review_count < 0)) throw new Error('Invalid ratings response');
+        const byId = new Map(ratings.map(r => [r.space_id, r]));
+        chunk.forEach(space => { space.rating = byId.get(space.id); });
+      }
+    } catch {
+      // A reviews outage must not hide listings or masquerade as zero reviews.
+      spaces.forEach(space => { space.ratingsUnavailable = true; });
+    }
+  }
   return id === undefined ? spaces : spaces.filter(space => space.id === id);
 }
 

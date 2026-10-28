@@ -8,7 +8,7 @@
 - SQL is prepared locally and run manually by the user. Do not automatically run remote database commands or associate this repository with an old CLI project.
 - Frontend accepts only a browser-safe publishable key, never secrets, service-role keys, or passwords. Validate configuration first; never silently fall back to demo.
 - Current stage: auth, owner dashboard/CRUD, image uploads, dual-source browsing, and local migrations. Current additions: single-spot reservations, authoritative quotes, overlap prevention and pricing. Current additions: simulated checkout, driver My Bookings/cancellation, and read-only owner reservations. Future: real payments and admin tools.
-- Scope includes signup/login/logout, SDK sessions, owner drafts and published listings, and user-folder Storage uploads. Reservations, clearly labelled demo payments, My Bookings and driver cancellation are allowed. No real payment gateway, financial credential collection, earnings, reviews, maps or admin panel.
+- Scope includes signup/login/logout, SDK sessions, owner drafts and published listings, and user-folder Storage uploads. Reservations, clearly labelled demo payments, My Bookings and driver cancellation are allowed. No real payment gateway, financial credential collection, embedded maps or admin panel. Demo earnings, verified booking reviews and external directions links are allowed.
 - Label demo data and unverified availability. Demo mode allows price previews only; persistent reservations require Supabase. Never imply real payment: use explicit demo_paid/demo_refunded labels and “Demo payment — no real money is collected.”
 - Use textContent for data, accessible labels/focus, responsive layouts, and local image fallbacks.
 - Serve through HTTP for testing; file:// cannot reliably load modules or JSON.
@@ -28,3 +28,9 @@
 - Protect mutations with SECURITY DEFINER RPCs, empty search_path, qualified objects, auth.uid() checks, booking FOR UPDATE locks and restricted execute grants. No direct table writes.
 - Cancellation only before arrival; repeated cancellation is safe. Paid cancellation records demo_refunded (no real refund); unpaid/failed history remains. Keep append-only private simulation history and request-key retry validation.
 - Owners only view reservations for their spaces, never mark paid/cancel/alter booking prices or statuses. Derive time categories in JavaScript; database time remains authoritative for mutations.
+
+- Apply 006 manually after 005 in the NEW project. No remote migrations or database resets.
+- Earnings derive the owner from auth.uid(), use stored booking prices and paid receipts once per booking, and never subtract the added service fee from the owner subtotal. Completed confirmed demo_paid = earnings; upcoming/active demo_paid = pending. Refunds and unpaid/failed/cancelled records are excluded. Filter ARRIVAL dates using inclusive Asia/Kolkata calendar days.
+- Reviews are one per historical booking, driver-only after confirmed departure; rating integer 1–5, trimmed text 10–1000 characters. Only guarded RPCs may mutate. Public projections omit booking/account IDs and expose only published spaces. Owners cannot edit driver reviews. Batch card rating queries.
+- Coordinates are optional paired latitude/longitude with finite range checks; never invent/geocode them. New bookings snapshot the listing location; pre-006 bookings retain their original address with locality/city backfilled at migration time, and no invented coordinates. Google Maps links use encoded structured data and no explicit origin. Clipboard failure must offer manual copy.
+- Demo JSON has no persisted reviews/earnings. Keep honest unavailable states. No real money, withdrawals, email notifications, admin panel or deployment.

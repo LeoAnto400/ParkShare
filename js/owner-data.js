@@ -8,6 +8,9 @@ export function validatePhoto(file) {
   if (!file.size || file.size > MAX_IMAGE_BYTES) throw new Error('Photo size must be greater than zero and no more than 5 MiB.');
 }
 export function validateListing(row) {
+  const lat = row.latitude, lng = row.longitude;
+  if ((lat == null) !== (lng == null) || (lat != null && (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)))
+    throw new Error('Enter both valid coordinates: latitude −90 to 90, longitude −180 to 180; or leave both empty.');
   for (const field of ['title', 'description', 'locality', 'city', 'address']) {
     if (typeof row[field] !== 'string' || !row[field].trim()) throw new Error('Complete all required text fields.');
   }

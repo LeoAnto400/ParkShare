@@ -27,3 +27,10 @@
 /* Logout is an action button with the same typography and spacing as nav links. */
 .header nav .nav-logout{font:inherit;color:inherit;background:none;border:0;border-radius:0;padding:0;text-decoration:none}
 .header nav .nav-logout:hover{background:none;text-decoration:underline}
+/* Shared header: identical logo sizing and right-aligned navigation on all pages. */
+.header > .brand{font-size:28px;font-weight:700;flex-shrink:0}
+.header > nav{margin-left:auto;justify-content:flex-end;font-size:14px;font-weight:400;gap:24px}
+.header .account-nav{margin-left:0;flex-shrink:0;font:inherit}
+.header .nav-loading{font:inherit;color:var(--muted)}
+@media(max-width:700px){.header > .brand{font-size:24px}.header > nav{gap:14px;font-size:12px}}
+.amenity-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.amenity-options>p{grid-column:1/-1;margin:16px 0 0}.schedule-row{display:grid;grid-template-columns:minmax(120px,1fr) 1fr 1fr;gap:12px;align-items:center;padding-block:8px;border-bottom:1px solid var(--line)}.schedule-row label{margin-top:0}.photo-editor{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-block:16px}.photo-item img{width:100%;height:130px;object-fit:cover;border-radius:8px}.photo-item button{font-size:12px;padding:8px 12px}.stack-form #schedule-editor{margin-block:24px}.schedule-row[data-common-hours]{grid-template-columns:1fr 1fr}@media(max-width:500px){.schedule-row{grid-template-columns:1fr 1fr}.schedule-row>.checkbox{grid-column:1/-1}}

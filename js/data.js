@@ -51,6 +51,7 @@ function mapRow(row) {
     id: row.id, title: row.title, description: row.description,
     locality: row.locality, city: row.city, address: row.address,
     latitude: row.latitude ?? null, longitude: row.longitude ?? null,
+    openingSchedule: row.opening_schedule,
     ownerId: row.owner_id || null, price: row.hourly_price, vehicles: row.supported_vehicles,
     amenities: row.amenities, rules: row.parking_rules, featured: row.featured,
     photos: row.image_urls.map(src => ({ src, alt: row.owner_id ? 'Owner-provided parking photo' : 'Illustrative sample photo, not the actual property' }))

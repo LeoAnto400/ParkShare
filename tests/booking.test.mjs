@@ -21,7 +21,7 @@ test('duration limits and pricing preview', () => {
   const start = indianTimeToUTC('2030-01-01T23:30');
   const end = indianTimeToUTC('2030-01-02T01:00');
   assert.equal(validateInterval(start,end,now),90);
-  assert.deepEqual(previewPrice(40,90), { hourly_rate:40,duration_minutes:90,parking_subtotal:60,service_fee_rate:0.05,service_fee:3,total:63 });
+  assert.deepEqual(previewPrice(40,90), { hourly_rate:40,duration_minutes:90,parking_subtotal:57,service_fee_rate:0.05,service_fee:3,total:60 });
   for (const minutes of [-1,0,29,10081]) assert.throws(() => validateInterval(start,new Date(Date.parse(start)+minutes*60000).toISOString(),now));
   for (const minutes of [30,10080]) assert.equal(validateInterval(start,new Date(Date.parse(start)+minutes*60000).toISOString(),now),minutes);
   assert.throws(() => validateInterval(start,end,Date.parse(start)));
@@ -45,11 +45,11 @@ test('booking AJAX sends only requested RPC fields, keeps retries identical, and
   const api = await import('data:text/javascript;base64,'+Buffer.from(prefix+source).toString('base64'));
   const original = globalThis.fetch;
   const calls=[];
-  let result = {...previewPrice(40,90),available:true};
+  let result = {...previewPrice(40,90),available:true,pricing_model:'inclusive_v1'};
   globalThis.fetch=async(url,options)=>{calls.push({url:new URL(url),options});return {ok:true,json:async()=>result};};
   const inputs={p_space_id:'pn-006',p_arrival:'2030-01-01T04:30:00Z',p_departure:'2030-01-01T06:00:00Z',p_vehicle_type:'Car'};
   try {
-    assert.equal((await api.getQuote(inputs)).total,63);
+    assert.equal((await api.getQuote(inputs)).total,60);
     assert.equal(calls[0].url.pathname,'/rest/v1/rpc/booking_quote');
     assert.equal(calls[0].options.headers.Authorization,undefined);
     result={id:'test-booking',arrival:inputs.p_arrival,departure:inputs.p_departure};

@@ -1,3 +1,4 @@
+import { scheduleView } from './schedule.js';
 import { loadSpace } from './data.js';
 import { element, parkingImage } from './ui.js';
 import { setupBooking } from './booking.js';
@@ -32,6 +33,9 @@ async function load() {
     for (const field of ['vehicles', 'amenities']) document.querySelector(`#${field}`).replaceChildren(...space[field].map(text => element('span', 'chip', text)));
     document.querySelector('#rules').replaceChildren(...space.rules.map(rule => element('li', '', rule)));
     document.querySelector('#space').hidden = false;
+    document.querySelector('#opening-hours')?.remove();
+    const hours = scheduleView(space.openingSchedule); hours.id = 'opening-hours';
+    document.querySelector('#rules').closest('section').after(hours);
     setupBooking(space);
     status.textContent = '';
     document.querySelector('#location-actions')?.remove();

@@ -1,6 +1,19 @@
 # ParkShare — parking discovery and Supabase reads
 
-## Current addition: demo earnings, reviews and directions
+## Current owner editor and pricing (migration 007)
+
+Apply `sql/007_listing_hours_inclusive_pricing.sql` manually after 001–006 in the NEW ParkShare project before using these changes. Restart/reload the local site at `/pages/index.html`. No remote SQL was run.
+
+- Owner-entered prices are now **inclusive**: ₹100/hour means driver total ₹100, platform ₹5, owner ₹95. ₹40/hour for 90 minutes is total ₹60, fee ₹3, owner ₹57. Round the total and fee to paise, then subtract; do not add another fee. Old bookings retain their stored prices and original fee model. Existing listing rates are unchanged but are interpreted as inclusive for new bookings.
+- My spaces → Add/Edit: coordinates were removed from the form. Existing saved coordinates remain; changing an address clears its old listing pin so directions use the new address. Existing booking snapshots stay intact. New listings use their address.
+- Amenities have checkboxes for EV charging, Covered parking, Security and CCTV camera, plus Others (one entry per line). Existing custom amenities survive editing.
+- Select multiple JPEG/PNG/WebP photos (5 MiB per file). Each selection adds to the photo list; remove individual photos before saving. At least one is required. The first retained photo is the listing cover. Uploaded files remain in Storage when unlinked; failed saves may leave orphan uploads for manual cleanup. Never delete shared sample images. Successfully uploaded items are reused when retrying a save.
+- Choose the same hours on selected weekdays or custom hours per weekday. All times are Asia/Kolkata. Unchecked days are closed. Closing 00:00 means midnight at day's end; 00:00–00:00 means 24 hours. To offer Monday 22:00–Tuesday 02:00, use custom Monday 22:00–00:00 and Tuesday 00:00–02:00. Use Unpublish to close a listing entirely. Existing listings default to 24/7 until edited.
+- Days, times, photos, amenities and other listing details remain editable. New quotes/bookings must fit entirely inside opening hours. Changes do not cancel or reprice existing reservations. Search/detail prices include the platform fee; details show the weekly hours.
+
+Test: save and reopen all fields, add/remove several photos, test a closed day and a boundary at closing time, test an overnight gap, and verify ₹100 splits 95/5. See `tests/schedule.test.mjs` and `tests/run_sql_checks.py`. Earlier stage descriptions below describe historical pricing where stated; **007 supersedes the added-fee model for new bookings**.
+
+## Previous addition (006): demo earnings, reviews and directions
 
 Migration **006** extends the existing application. Run it manually after 001–005 in the **NEW ParkShare project**; see the final section of [SUPABASE_SETUP.md](SUPABASE_SETUP.md). Existing bookings, payment history and ownerless samples are retained. The agent does not apply remote migrations.
 

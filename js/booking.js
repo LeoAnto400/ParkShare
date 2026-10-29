@@ -36,8 +36,8 @@ export function setupBooking(space) {
   }
   function displayPrice(price, label) {
     breakdown.replaceChildren(element('h3', '', label));
-    for (const [name, value] of [['Duration', `${price.duration_minutes} minutes`], ['Hourly rate', money(price.hourly_rate)],
-      ['Parking charge', money(price.parking_subtotal)], ['Service fee (5%)', money(price.service_fee)], ['Total', money(price.total)]]) {
+    for (const [name, value] of [['Duration', `${price.duration_minutes} minutes`], ['Hourly price (fee included)', money(price.hourly_rate)],
+      ['Owner parking amount', money(price.parking_subtotal)], ['Included platform fee (5% of total)', money(price.service_fee)], ['Total', money(price.total)]]) {
       breakdown.append(element('p', '', `${name}: ${value}`));
     }
   }
@@ -86,7 +86,7 @@ export function setupBooking(space) {
     } catch (error) {
       status.textContent = error.message;
       // Only explicit database rejection proves no booking was created. Network/unknown errors retain key.
-      if (['PRICE_CHANGED','SLOT_TAKEN','INVALID_INTERVAL','UNSUPPORTED_VEHICLE','INVALID_REGISTRATION','SELF_BOOKING','SPACE_UNAVAILABLE'].includes(error.code)) {
+      if (['PRICE_CHANGED','SLOT_TAKEN','INVALID_INTERVAL','UNSUPPORTED_VEHICLE','INVALID_REGISTRATION','SELF_BOOKING','SPACE_UNAVAILABLE','OUTSIDE_OPENING_HOURS'].includes(error.code)) {
         sessionStorage.removeItem(key); pending = null; quote = null;
       }
       retry.hidden = !pending;

@@ -3,6 +3,7 @@ import { configuration } from './data.js';
 import { isDemo, requireSession } from './auth.js';
 
 const messages = {
+  OUTSIDE_OPENING_HOURS: 'Choose times entirely within the space’s opening hours (Asia/Kolkata).',
   REVIEW_INELIGIBLE: 'Only a completed, confirmed reservation can be reviewed.',
   INVALID_REVIEW: 'Choose an integer rating from 1 to 5 and write 10–1000 characters after trimming.',
   INVALID_EARNINGS_FILTER: 'Check the arrival date range; the start must not be after the end.',
@@ -37,7 +38,7 @@ export async function request(path, body, authenticated = false) {
   try { data = await response.json(); } catch { throw new Error('Unexpected response. Retry the same reservation attempt if confirmation was interrupted.'); }
   if (!response.ok) {
     const code = Object.keys(messages).find(key => data?.message === key);
-    const error = new Error(messages[code] || `Data request failed (HTTP ${response.status}). Check your session and migrations 004–006; retry the same attempt if its outcome is unknown.`);
+    const error = new Error(messages[code] || `Data request failed (HTTP ${response.status}). Check your session and migrations 004–007; retry the same attempt if its outcome is unknown.`);
     error.code = code || String(response.status);
     throw error;
   }
@@ -45,6 +46,7 @@ export async function request(path, body, authenticated = false) {
 }
 export async function getQuote(requestData) {
   const quote = await request('rpc/booking_quote', requestData);
+  if (quote?.pricing_model !== 'inclusive_v1') throw new Error('Apply migration 007 in the NEW ParkShare project before booking. Listed prices now include the platform fee.');
   if (typeof quote?.available !== 'boolean' || !['hourly_rate','duration_minutes','parking_subtotal','service_fee_rate','service_fee','total'].every(key => typeof quote[key] === 'number' && Number.isFinite(quote[key]) && quote[key] >= 0)) throw new Error('Invalid quote returned by the service.');
   return quote;
 }

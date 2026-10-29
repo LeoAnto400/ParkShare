@@ -148,17 +148,45 @@ with tempfile.TemporaryDirectory(prefix='parkshare-sql-') as tmp:
         # Exercise existing creation/payment retry/cancellation with the new snapshot trigger.
         call = f"select public.create_booking('test-space',now()+interval '10 days',now()+interval '10 days 1 hour','Car','KA20AB1234','{bid(99)}',100);"
         booking = obj(call, driver)
-        assert booking['space_locality'] == 'Locality' and booking['total'] == 105
+        assert booking['space_locality'] == 'Locality' and booking['total'] == 100 and booking['parking_subtotal'] == 95 and booking['service_fee'] == 5
         new_id = booking['id']
         pay = f"select public.simulate_booking_payment('{new_id}','success','{bid(100)}');"
         first, repeated = obj(pay, driver), obj(pay, driver)
         assert first['event']['id'] == repeated['event']['id']
-        assert obj('select public.owner_earnings();', owner)['totals']['pending_owner'] == 300
+        assert obj('select public.owner_earnings();', owner)['totals']['pending_owner'] == 295
         cancelled = obj(f"select public.cancel_booking('{new_id}');", driver)
         assert cancelled['payment_status'] == 'demo_refunded'
         assert obj('select public.owner_earnings();', owner)['totals']['pending_owner'] == 200
         print('PASS regression: booking creation, location snapshot, payment retry, cancellation and earnings reconciliation')
-        print('All six migrations and local database checks passed. Hosted Supabase integration remains manual.')
+        # Weekly hours are enforced by both quote and create, independently of browser timezone.
+        monday = "((date_trunc('week', now() at time zone 'Asia/Kolkata') + interval '14 days') at time zone 'Asia/Kolkata')"
+        def hours_quote(start, end):
+            return f"select public.booking_quote('test-space',{monday}+interval '{start}',{monday}+interval '{end}','Car');"
+        daily = dict(mode='daily', days=[dict(open='09:00',close='17:00')]*5+[None,None])
+        def set_hours(schedule):
+            sql("update public.parking_spaces set opening_schedule='"+json.dumps(schedule)+"'::jsonb where id='test-space';", owner)
+        set_hours(daily)
+        assert obj(hours_quote('9 hours','10 hours'),role='anon')['total']==100
+        assert obj(hours_quote('16 hours','17 hours'),role='anon')['parking_subtotal']==95
+        sql(hours_quote('8 hours','10 hours'),role='anon',error='OUTSIDE_OPENING_HOURS')
+        sql(hours_quote('16 hours','18 hours'),role='anon',error='OUTSIDE_OPENING_HOURS')
+        sql(hours_quote('6 days 9 hours','6 days 10 hours'),role='anon',error='OUTSIDE_OPENING_HOURS')
+        sql(f"select public.create_booking('test-space',{monday}+interval '8 hours',{monday}+interval '10 hours','Car','KA20AB1234','{bid(101)}',100);",driver,error='OUTSIDE_OPENING_HOURS')
+        custom=dict(mode='custom',days=[dict(open='22:00',close='00:00'),dict(open='00:00',close='02:00')]+[None]*5)
+        set_hours(custom)
+        assert obj(hours_quote('23 hours','1 day 1 hour'),role='anon')['total']==200
+        custom['days'][1]['open']='00:30'
+        set_hours(custom)
+        sql(hours_quote('23 hours','1 day 1 hour'),role='anon',error='OUTSIDE_OPENING_HOURS')
+        invalid_schedules=[dict(mode='daily',days=[None]*7),dict(mode='custom',days=[dict(open='22:00',close='02:00')]+[None]*6),
+                           dict(mode='daily',days=[dict(open='09:00',close='17:00'),dict(open='10:00',close='17:00')]+[None]*5)]
+        for invalid in invalid_schedules:
+            sql("update public.parking_spaces set opening_schedule='"+json.dumps(invalid)+"'::jsonb where id='test-space';",owner,error='valid_weekly_schedule')
+        sql("update public.parking_spaces set image_urls=array['https://example.test/one.jpg','https://example.test/two.png'],amenities=array['EV charging','CCTV camera','Custom amenity'] where id='test-space';",owner)
+        assert sql("select cardinality(image_urls) from public.parking_spaces where id='test-space';",owner)=='2'
+        assert sql(f"select total from public.bookings where id='{bid(1)}';",driver)=='105.00'
+        print('PASS weekly schedules: daily/custom, closed days, end boundary, midnight coverage, invalid schedules, quote/create enforcement; multi-photo editing and preserved history')
+        print('All seven migrations and local database checks passed. Hosted Supabase integration remains manual.')
     finally:
         if started:
             run('pg_ctl', '-D', data, '-m', 'immediate', '-w', 'stop')

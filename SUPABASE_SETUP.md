@@ -224,3 +224,20 @@ Coordinates must be both NULL or both finite/in-range. Existing listings keep NU
 Prepare a legitimate completed reservation before the presentation (minimum duration 30 minutes); server time controls eligibility. Changing the browser clock does not bypass the RPC. Do not modify production timestamps or weaken policies to make the demo faster.
 
 Local test status is reported in the implementation response. Local PostgreSQL auth/storage stubs cannot prove hosted JWT, PostgREST, Storage, or account-session behavior; the hosted checklist remains pending until you apply 006 and test with your NEW project.
+
+
+## Migration 007: editable weekly hours, multiple photos and inclusive prices
+
+In the NEW ParkShare SQL Editor, run `sql/007_listing_hours_inclusive_pricing.sql` once after migrations 001–006. Do not rerun earlier successful migrations or reset data. It validates a weekly schedule, defaults existing listings to 24/7, and replaces quote/create functions while retaining their security/locking/idempotency behavior. No remote migration is run by the agent.
+
+Listed prices now include a platform fee of **5% of the driver total**: total = round(hourly price × minutes / 60, 2), fee = round(total × .05, 2), owner amount = total − fee. Existing listing prices stay numerically unchanged; all new reservations use this model. Existing bookings retain their amounts and `exclusive_v1` marker; new bookings use `inclusive_v1`. Earnings continue to sum stored owner amounts, without a second deduction. A missing 007 quote is rejected by the current frontend rather than displaying the old fee as included.
+
+Restart the static server if needed: `python -m http.server 5500 --bind 127.0.0.1`, then open `http://127.0.0.1:5500/pages/index.html` and hard-refresh. Keep Confirm email OFF and only the NEW project's publishable configuration. Test with separate owner/driver sessions:
+
+- Save a listing with EV/Covered/Security/CCTV checkboxes and Others. Reopen Edit and verify retention.
+- Add multiple photos across several selections; remove one retained/new photo, save and reload the gallery. Reject unsupported formats and files above 5 MiB. At least one photo must remain. Unlinked/orphan Storage files are retained; clean up manually only after checking references and never delete shared sample files.
+- Select weekdays with one common schedule, then switch to custom daily hours. Reopen Edit and verify mode/days/hours. Closed days reject bookings; a departure exactly at closing is allowed. A booking spanning a closed gap is rejected. For overnight service split hours across adjacent days; all comparisons are in Asia/Kolkata.
+- Check both quote and direct create_booking requests reject outside-hours intervals. Another owner cannot edit the schedule. Existing bookings remain accessible after schedule edits.
+- Verify ₹100/hour → ₹100 driver, ₹5 platform, ₹95 owner; ₹40 × 90 minutes → ₹60 driver, ₹3 platform, ₹57 owner. Old reservation prices/payment histories stay unchanged. Payment/cancellation/earnings use stored amounts.
+
+The coordinate controls are removed; existing coordinate columns and booking snapshots remain intact. New listings use address-based directions. No maps/geocoding, real money or email flows were added.

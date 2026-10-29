@@ -19,10 +19,11 @@ export function registrationNumber(value) {
 }
 export function previewPrice(rate, minutes) {
   // Integer paise avoids common binary floating-point rounding errors in the preview.
-  const subtotalPaise = Math.round(Math.round(rate * 100) * minutes / 60);
-  const feePaise = Math.round(subtotalPaise * 5 / 100);
+  const totalPaise = Math.round(Math.round(rate * 100) * minutes / 60);
+  const feePaise = Math.round(totalPaise * 5 / 100);
+  const subtotalPaise = totalPaise - feePaise;
   return { hourly_rate: rate, duration_minutes: minutes, parking_subtotal: subtotalPaise / 100,
-    service_fee_rate: 0.05, service_fee: feePaise / 100, total: (subtotalPaise + feePaise) / 100 };
+    service_fee_rate: 0.05, service_fee: feePaise / 100, total: totalPaise / 100 };
 }
 export const money = value => `₹${Number(value).toFixed(2)}`;
 export const indianDisplay = value => new Intl.DateTimeFormat('en-IN', {

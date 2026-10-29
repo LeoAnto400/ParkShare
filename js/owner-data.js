@@ -1,6 +1,7 @@
 import { SUPABASE_PUBLISHABLE_KEY } from './config.js';
 import { configuration } from './data.js';
 import { requireSession, getClient } from './auth.js';
+import { validateSchedule } from './schedule.js';
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export function validatePhoto(file) {
@@ -8,6 +9,7 @@ export function validatePhoto(file) {
   if (!file.size || file.size > MAX_IMAGE_BYTES) throw new Error('Photo size must be greater than zero and no more than 5 MiB.');
 }
 export function validateListing(row) {
+  if (row.opening_schedule !== undefined) validateSchedule(row.opening_schedule);
   const lat = row.latitude, lng = row.longitude;
   if ((lat == null) !== (lng == null) || (lat != null && (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)))
     throw new Error('Enter both valid coordinates: latitude −90 to 90, longitude −180 to 180; or leave both empty.');

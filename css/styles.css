@@ -24,3 +24,6 @@
 .review-card p { white-space:pre-wrap; overflow-wrap:anywhere; }
 #earnings-section,#reviews { margin:2rem 0; }
 .rating-summary { font-weight:600; color:#315843; }
+/* Logout is an action button with the same typography and spacing as nav links. */
+.header nav .nav-logout{font:inherit;color:inherit;background:none;border:0;border-radius:0;padding:0;text-decoration:none}
+.header nav .nav-logout:hover{background:none;text-decoration:underline}

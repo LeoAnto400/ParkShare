@@ -1,19 +1,22 @@
 import { getClient, isDemo, session } from './auth.js';
 import { element } from './ui.js';
 
-const nav = document.querySelector('nav');
-const account = element('span', 'account-nav');
-nav.append(account);
+const nav = document.querySelector('nav[aria-label="Main navigation"]');
+const account = nav.querySelector('.account-nav');
+// The same three destinations are present on every page, even before session loading.
+for (const link of nav.querySelectorAll('a')) {
+  if (new URL(link.href).pathname === window.location.pathname) link.setAttribute('aria-current', 'page');
+}
 function draw(current) {
   account.replaceChildren();
-  const link = element('a', '', current ? 'My spaces' : 'Log in');
-  link.href = current ? 'dashboard.html' : 'login.html';
-  account.append(link);
+  if (!current) {
+    const link = element('a', '', 'Log in');
+    link.href = 'login.html';
+    if (new URL(link.href).pathname === window.location.pathname) link.setAttribute('aria-current', 'page');
+    account.append(link);
+  }
   if (current) {
-    const bookings = element('a', '', 'My bookings');
-    bookings.href = 'my-bookings.html';
-    account.append(bookings);
-    const logout = element('button', 'link-button', 'Log out');
+    const logout = element('button', 'nav-logout', 'Logout');
     logout.type = 'button';
     logout.addEventListener('click', async () => {
       logout.disabled = true;

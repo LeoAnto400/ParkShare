@@ -7,6 +7,8 @@ import { eligibleReview } from './reviews.js';
 
 const root = document.querySelector('#reservations-section');
 const owner = root.dataset.audience === 'owner';
+const scoped = root.dataset.spaceScoped === 'true';
+const spaceId = new URLSearchParams(location.search).get('id');
 const status = root.querySelector('[data-status]');
 const list = root.querySelector('[data-list]');
 const filter = root.querySelector('[data-category]');
@@ -71,6 +73,7 @@ async function load(message = '') {
   setBusy(true); status.textContent = 'Loading reservations…';
   try {
     bookings = await (owner ? loadOwnerReservations() : loadMyBookings());
+    if (scoped) bookings = bookings.filter(booking => booking.parking_space_id === spaceId);
     if (listingFilter) {
       const previous = listingFilter.value;
       listingFilter.replaceChildren(new Option('All spaces with reservations', ''));
@@ -87,7 +90,7 @@ filter.addEventListener('change', draw);
 listingFilter?.addEventListener('change', draw);
 refresh.addEventListener('click', () => { if (!busy) load(); });
 try {
-  const current = await protectPage(owner ? 'dashboard.html' : 'my-bookings.html', status, list);
+  const current = await protectPage(scoped ? `owner-space.html?${new URLSearchParams({ id: spaceId || '' })}` : owner ? 'dashboard.html' : 'my-bookings.html', status, list);
   if (current) {
     controls.hidden = false;
     await load();

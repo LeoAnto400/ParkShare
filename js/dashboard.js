@@ -1,4 +1,7 @@
 import { scheduleEditor } from './schedule.js';
+import { loadCardEarnings, cardEarningsView } from './owner-card-earnings.js';
+import { loadOwnerReservations } from './management-data.js';
+import { summarizeOwnerBookings, renderBookingSummary } from './owner-booking-summary.js';
 import { previewPrice, money } from './booking-rules.js';
 import { isDemo, getClient, session } from './auth.js';
 import { element } from './ui.js';
@@ -6,6 +9,7 @@ import { loadOwnedSpaces, createOwnedSpace, updateOwnedSpace, deleteOwnedSpace, 
 
 const status = document.querySelector('#owner-status');
 const list = document.querySelector('#owner-list');
+const accountEarnings = document.querySelector('#account-earnings');
 const form = document.querySelector('#listing-form');
 const panel = document.querySelector('#editor');
 const controls = document.querySelector('#owner-controls');
@@ -14,6 +18,8 @@ const schedule = scheduleEditor(document.querySelector('#schedule-editor'));
 const standardAmenities = ['EV charging', 'Covered parking', 'Security', 'CCTV camera'];
 let photos = [];
 let listings = [];
+let ownerBookings = [], bookingLoadFailed = false;
+let cardEarnings = null;
 let editing = null;
 let createId;
 let busy = false;
@@ -52,7 +58,11 @@ function render() {
   list.replaceChildren();
   for (const row of listings) {
     const card = element('article', 'owner-card');
-    card.append(element('h2', '', row.title), element('p', 'muted', `${row.locality} · ₹${row.hourly_price}/hour (fee included) · ${row.published ? 'Published' : 'Draft'}`));
+    const title = element('h2');
+    const link = element('a', 'card-link', row.title);
+    link.href = `owner-space.html?${new URLSearchParams({ id: row.id })}`;
+    title.append(link);
+    card.append(title, element('p', 'muted', `${row.locality} · ₹${row.hourly_price}/hour (fee included) · ${row.published ? 'Published' : 'Draft'}`));
     const actions = element('div', 'owner-actions');
     const edit = element('button', 'secondary', 'Edit');
     edit.addEventListener('click', () => openEditor(row));
@@ -66,18 +76,45 @@ function render() {
     });
     actions.append(edit, publish, remove);
     card.append(actions);
+    const overview = element('section', 'booking-overview');
+    overview.dataset.spaceId = row.id;
+    overview.setAttribute('aria-label', `Booking overview for ${row.title}`);
+    card.append(overview);
+    card.append(cardEarningsView(cardEarnings, row.id));
     list.append(card);
   }
+  refreshBookingSummaries();
+  accountEarnings.replaceChildren(cardEarningsView(cardEarnings, null, true));
+  accountEarnings.hidden = false;
+}
+function refreshBookingSummaries() {
+  const summaries = summarizeOwnerBookings(ownerBookings);
+  list.querySelectorAll('.booking-overview').forEach(root => {
+    renderBookingSummary(root, summaries.get(root.dataset.spaceId), bookingLoadFailed);
+  });
 }
 async function refresh(message = '') {
   const version = ++refreshVersion;
   status.textContent = 'Loading your spaces…';
+  accountEarnings.hidden = true;
   try {
-    const rows = await loadOwnedSpaces();
+    // Fetch owned reservations in pages once, not separately for every space.
+    // A reservations failure must not hide listings or imply there are no bookings.
+    const [spacesResult, bookingsResult, earningsResult] = await Promise.allSettled([loadOwnedSpaces(), loadOwnerReservations(), loadCardEarnings()]);
     if (version !== refreshVersion) return;
+    if (spacesResult.status === 'rejected') throw spacesResult.reason;
+    const rows = spacesResult.value;
     listings = rows;
+    bookingLoadFailed = bookingsResult.status === 'rejected';
+    ownerBookings = bookingLoadFailed ? [] : bookingsResult.value;
+    cardEarnings = earningsResult.status === 'fulfilled' ? earningsResult.value : null;
     render();
-    status.textContent = message || (rows.length ? `${rows.length} spaces in your dashboard.` : 'No spaces yet. Add your first parking space.');
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (editId && !panel.dataset.openedFromLink) {
+      const selected = listings.find(row => row.id === editId);
+      if (selected) { openEditor(selected); panel.dataset.openedFromLink = 'true'; }
+    }
+    status.textContent = message || (rows.length ? '' : 'No spaces yet. Add your first parking space.');
   } catch (error) { if (version === refreshVersion) status.textContent = `${message ? `${message} ` : ''}${error.message} Use Refresh to retry.`; }
 }
 async function mutate(action, message) {
@@ -133,17 +170,25 @@ if (isDemo) {
       const client = await getClient();
       client.auth.onAuthStateChange((_event, active) => {
         if (active && active.user.id !== current.user.id) {
+          ++refreshVersion;
+          ownerBookings = []; listings = []; cardEarnings = null; list.replaceChildren();
+          accountEarnings.replaceChildren(); accountEarnings.hidden = true;
           window.location.reload();
         } else if (!active) {
           ++refreshVersion;
+          ownerBookings = []; listings = []; cardEarnings = null;
           controls.hidden = true;
           list.replaceChildren();
+          accountEarnings.replaceChildren(); accountEarnings.hidden = true;
           fields.disabled = true;
           status.textContent = 'You are signed out. Log in again to manage spaces.';
         }
       });
       controls.hidden = false;
       await refresh();
+      // Update past/current/next labels at time boundaries; Refresh listings fetches new records.
+      setInterval(() => { if (!busy && !document.hidden) refreshBookingSummaries(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy) refreshBookingSummaries(); });
     }
   } catch (error) { status.textContent = `${error.message} Reload this page to retry.`; }
 }

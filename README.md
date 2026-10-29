@@ -195,3 +195,10 @@ Class study files:
 Run 005 manually after 004, following [SUPABASE_SETUP.md](SUPABASE_SETUP.md). Keep email/password auth and Confirm email OFF. Local JSON demo mode remains browse/preview-only; it does not simulate persisted bookings/payments.
 
 Current local checks: 12 test cases passed across auth, data, owners, bookings and management tests. New tests cover exact category boundaries, UI eligibility, login destinations, paginated driver reads, authenticated RPC payloads without client amounts/identities, and identical retry keys. JavaScript syntax checks passed. Mocked tests do not prove payment transitions, RLS or concurrency. No live migration, simulation, cancellation, PostgreSQL execution or browser UI test was performed; use the live checklist in SUPABASE_SETUP.md. Node's optional module-type warning does not affect the static browser application.
+
+
+## Owner space detail pages
+
+My spaces now shows the Owner dashboard heading, listing controls and clickable space cards with booking overviews. The combined reservation/earnings panels have been removed from that page. Each card opens `pages/owner-space.html?id=...`, which verifies ownership and shows the complete listing, photos, hours, reviews, reservation history (including past/cancelled filters), selectable daily/monthly earnings, and a full arrival-date earnings breakdown. Edit this space returns to the populated owner editor. Daily/monthly totals reuse the protected owner_earnings RPC and retain the existing completed/pending/refund rules. No new migration is needed.
+
+Find parking cards are clickable across their full area with an accessible native link. Owner card buttons and booking-detail links remain independent controls.

@@ -11,7 +11,9 @@ const totals = document.querySelector('#earnings-totals');
 const table = document.querySelector('#earnings-rows');
 const previous = document.querySelector('#earnings-previous');
 const next = document.querySelector('#earnings-next');
-let offset = 0, busy = false, filters = {};
+const scoped = document.querySelector('#earnings-section').dataset.spaceScoped === 'true';
+const spaceId = new URLSearchParams(location.search).get('id');
+let offset = 0, busy = false, filters = { p_space_id: scoped ? spaceId : null };
 async function load(newOffset) {
   if (busy) return;
   busy = true; form.querySelector('fieldset').disabled = true; previous.disabled = next.disabled = true;
@@ -47,15 +49,17 @@ form.addEventListener('submit', event => {
   const from = form.elements.from.value, to = form.elements.to.value;
   if (from && to && from > to) { status.textContent = 'Arrival start date must be on or before the end date.'; return; }
   // Send calendar dates, not browser-local Date conversions. SQL applies Asia/Kolkata.
-  filters = { p_space_id: form.elements.space.value || null, p_from: from || null, p_to: to || null };
+  filters = { p_space_id: scoped ? spaceId : form.elements.space.value || null, p_from: from || null, p_to: to || null };
   load(0);
 });
 previous.addEventListener('click', () => load(Math.max(0, offset - 50)));
 next.addEventListener('click', () => load(offset + 50));
 try {
-  const current = await protectPage('dashboard.html', status, content);
+  const current = await protectPage(scoped ? `owner-space.html?${new URLSearchParams({ id: spaceId || '' })}` : 'dashboard.html', status, content);
   if (current) {
-    for (const space of await loadOwnedSpaces()) form.elements.space.append(new Option(space.title, space.id));
+    const spaces = await loadOwnedSpaces();
+    if (scoped && !spaces.some(space => space.id === spaceId)) throw new Error('Space not found or you do not own it.');
+    if (!scoped) for (const space of spaces) form.elements.space.append(new Option(space.title, space.id));
     content.hidden = false; await load(0);
   }
 } catch (error) { status.textContent = `${error.message} Reload to retry.`; }

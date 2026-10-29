@@ -28,7 +28,7 @@ async function load() {
         checkout.href = `checkout.html?${new URLSearchParams({ booking: id })}`; links.append(checkout);
       }
     } else {
-      const owner = element('a', 'button secondary', 'Back to owner reservations'); owner.href = 'dashboard.html#reservations-section'; links.append(owner);
+      const owner = element('a', 'button secondary', 'Back to owner reservations'); owner.href = `owner-space.html?${new URLSearchParams({ id: booking.parking_space_id })}#reservations-section`; links.append(owner);
     }
     content.append(links);
     try { content.append(historyView(await paymentHistory(id))); }

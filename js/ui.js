@@ -33,7 +33,7 @@ export function renderCards(container, spaces, search = '') {
     const bottom = element('div', 'card-bottom');
     const price = element('span');
     price.append(element('strong', '', `₹${space.price}`), document.createTextNode(' / hour'));
-    const link = element('a', '', 'View space ↗');
+    const link = element('a', 'card-link', 'View space ↗');
     const params = new URLSearchParams({ id: space.id });
     if (search) params.set('location', search);
     link.href = `space.html?${params}`;

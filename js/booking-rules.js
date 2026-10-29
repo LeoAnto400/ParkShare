@@ -35,9 +35,9 @@ export function authDestination(search) {
   const value = new URLSearchParams(search).get('returnTo');
   if (!value) return 'dashboard.html';
   if (['my-bookings.html', 'dashboard.html'].includes(value)) return value;
-  const match = value.match(/^(space|confirmation|checkout|review)\.html\?([^#]+)$/);
+  const match = value.match(/^(space|owner-space|confirmation|checkout|review)\.html\?([^#]+)$/);
   if (!match) return 'dashboard.html';
   const params = new URLSearchParams(match[2]);
-  const id = params.get(match[1] === 'space' ? 'id' : 'booking');
+  const id = params.get(['space','owner-space'].includes(match[1]) ? 'id' : 'booking');
   return id && /^[a-z0-9-]+$/.test(id) ? value : 'dashboard.html';
 }

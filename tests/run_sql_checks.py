@@ -62,7 +62,7 @@ with tempfile.TemporaryDirectory(prefix='parkshare-sql-') as tmp:
         sql("""
           create role anon; create role authenticated;
           create schema auth; create schema storage; create schema extensions;
-          create table auth.users(id uuid primary key);
+          create table auth.users(id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb);
           create function auth.uid() returns uuid language sql stable as
             $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
           grant usage on schema auth to anon,authenticated;
@@ -158,6 +158,9 @@ with tempfile.TemporaryDirectory(prefix='parkshare-sql-') as tmp:
         assert cancelled['payment_status'] == 'demo_refunded'
         assert obj('select public.owner_earnings();', owner)['totals']['pending_owner'] == 200
         print('PASS regression: booking creation, location snapshot, payment retry, cancellation and earnings reconciliation')
+        # 008 forbids schedule edits that strand a confirmed booking, so release the
+        # remaining future bookings before exercising arbitrary weekly schedules.
+        sql("update public.bookings set status='cancelled',cancelled_at=now(),payment_status=case when payment_status='demo_paid' then 'demo_refunded' else payment_status end where parking_space_id='test-space' and status='confirmed' and departure>now();")
         # Weekly hours are enforced by both quote and create, independently of browser timezone.
         monday = "((date_trunc('week', now() at time zone 'Asia/Kolkata') + interval '14 days') at time zone 'Asia/Kolkata')"
         def hours_quote(start, end):
@@ -186,7 +189,77 @@ with tempfile.TemporaryDirectory(prefix='parkshare-sql-') as tmp:
         assert sql("select cardinality(image_urls) from public.parking_spaces where id='test-space';",owner)=='2'
         assert sql(f"select total from public.bookings where id='{bid(1)}';",driver)=='105.00'
         print('PASS weekly schedules: daily/custom, closed days, end boundary, midnight coverage, invalid schedules, quote/create enforcement; multi-photo editing and preserved history')
-        print('All seven migrations and local database checks passed. Hosted Supabase integration remains manual.')
+
+        # ---- 008: profiles, listing fields, entry instructions, blocks, conflicts, availability reads ----
+        newbie = '00000000-0000-0000-0000-000000000004'
+        sql(f"""insert into auth.users values ('{newbie}','{{"name":"  New Driver ","phone":"+919876543210"}}');""")
+        assert obj(f"select to_jsonb(p) from public.profiles p where id='{newbie}';")['phone'] == '+919876543210'
+        sql("insert into auth.users values ('00000000-0000-0000-0000-000000000005','{\"name\":\"Bad\",\"phone\":\"call me\"}');")
+        assert sql("select coalesce(phone,'none') from public.profiles where id='00000000-0000-0000-0000-000000000005';") == 'none'
+        assert sql('select count(*) from public.profiles;', newbie) == '1'
+        assert sql('select full_name from public.profiles;', newbie) == 'New Driver'
+        sql("update public.profiles set phone='12ab';", newbie, error='profiles_phone_check')
+        sql("update public.profiles set full_name='Renamed',phone='9876543210';", newbie)
+        assert sql(f"select count(*) from public.profiles where id='{newbie}';", driver) == '0'
+        sql('select * from public.profiles;', role='anon', error='permission denied')
+        print('PASS profiles: created from signup metadata, invalid phone tolerated as null, own-row RLS and phone format')
+
+        sql("update public.parking_spaces set landmark='Opposite KMC gate',max_vehicle_length_m=4.8,max_vehicle_height_m=2.1 where id='test-space';", owner)
+        for bad in ['max_vehicle_height_m=11', 'max_vehicle_length_m=0', "landmark='   '"]:
+            sql(f"update public.parking_spaces set {bad} where id='test-space';", owner, error='check')
+        assert obj("select to_jsonb(s) from public.parking_spaces s where id='test-space';", role='anon')['landmark'] == 'Opposite KMC gate'
+        print('PASS listing fields: landmark and vehicle size limits with range checks and public read')
+
+        sql("update public.parking_spaces set opening_schedule='"+json.dumps(dict(mode='daily',days=[dict(open='00:00',close='00:00')]*7))+"'::jsonb where id='test-space';", owner)
+        t0 = "(date_trunc('hour', now()) + interval '20 days')"
+        def at(offset): return f"({t0}+interval '{offset}')"
+        booked = obj(f"select public.create_booking('test-space',{at('0 hours')},{at('1 hour')},'Car','KA20AB1234','{bid(200)}',100);", driver)['id']
+        sql(f"select public.create_space_block('test-space',{at('30 minutes')},{at('2 hours')},'Family visit');", owner, error='BLOCK_CONFLICTS_BOOKING')
+        block = obj(f"select public.create_space_block('test-space',{at('2 hours')},{at('4 hours')},'Family visit');", owner)
+        sql(f"select public.create_space_block('test-space',{at('3 hours')},{at('5 hours')},null);", owner, error='BLOCK_OVERLAP')
+        sql(f"select public.create_space_block('test-space',{at('6 hours')},{at('7 hours')},null);", other, error='SPACE_FORBIDDEN')
+        sql(f"select public.create_space_block('test-space',{at('7 hours')},{at('6 hours')},null);", owner, error='INVALID_BLOCK')
+        sql(f"insert into public.space_blocks(parking_space_id,starts_at,ends_at) values('test-space',{at('8 hours')},{at('9 hours')});", owner, error='permission denied')
+        quote = obj(f"select public.booking_quote('test-space',{at('3 hours')},{at('5 hours')},'Car');", role='anon')
+        assert quote['available'] is False and 'reason' not in quote
+        assert obj(f"select public.booking_quote('test-space',{at('4 hours')},{at('5 hours')},'Car');", role='anon')['available'] is True
+        sql(f"select public.create_booking('test-space',{at('3 hours')},{at('5 hours')},'Car','KA20AB1234','{bid(201)}',100);", driver, error='SPACE_BLOCKED')
+        busy = obj(f"select public.space_busy_intervals('test-space',{at('-1 hour')},{at('6 hours')});", role='anon')
+        assert [b['kind'] for b in busy] == ['booked','blocked'] and all(set(b) == {'start','end','kind'} for b in busy), busy
+        sql(f"select public.space_busy_intervals('test-space',{at('0 hours')},{at('40 days')});", role='anon', error='INVALID_RANGE')
+        free = obj(f"select public.available_space_ids({at('10 hours')},{at('11 hours')});", role='anon')
+        assert 'test-space' in free and 'other-space' in free, free
+        assert 'test-space' not in obj(f"select public.available_space_ids({at('2 hours')},{at('3 hours')});", role='anon')
+        assert 'test-space' not in obj(f"select public.available_space_ids({at('0 hours')},{at('1 hour')});", role='anon')
+        assert 'other-space' in obj(f"select public.available_space_ids({at('0 hours')},{at('1 hour')});", role='anon')
+        print('PASS blocks: booking conflicts, overlap, ownership, quote/create enforcement, private reasons, busy reads and availability search')
+
+        narrow = dict(mode='daily', days=[dict(open='09:00',close='09:30')]*7)
+        sql("update public.parking_spaces set opening_schedule='"+json.dumps(narrow)+"'::jsonb where id='test-space';", owner, error='SCHEDULE_CONFLICTS_BOOKING')
+        sql("update public.parking_spaces set title='Renamed test space' where id='test-space';", owner)
+        print('PASS schedule guard: hours that strand a confirmed booking are rejected; other edits still allowed')
+
+        sql("select public.set_space_entry_instructions('test-space','  Gate code 4512. Bay 3.  ');", owner)
+        sql("select public.set_space_entry_instructions('test-space','x');", other, error='SPACE_FORBIDDEN')
+        assert obj(f"select public.booking_entry_instructions(array['{booked}']::uuid[]);", driver) == [dict(booking_id=booked, instructions='Gate code 4512. Bay 3.')]
+        assert obj(f"select public.booking_entry_instructions(array['{booked}']::uuid[]);", owner)[0]['instructions'] == 'Gate code 4512. Bay 3.'
+        assert obj(f"select public.booking_entry_instructions(array['{booked}']::uuid[]);", other) == []
+        assert sql('select count(*) from public.space_entry_instructions;', driver) == '0'
+        assert sql('select count(*) from public.space_entry_instructions;', owner) == '1'
+        sql(f"select public.booking_entry_instructions(array['{booked}']::uuid[]);", role='anon', error='permission denied')
+        assert 'Gate code' not in sql("select to_jsonb(s)::text from public.parking_spaces s where id='test-space';", role='anon')
+        sql(f"select public.cancel_booking('{booked}');", driver)
+        assert obj(f"select public.booking_entry_instructions(array['{booked}']::uuid[]);", driver) == []
+        sql("select public.set_space_entry_instructions('test-space','   ');", owner)
+        assert sql('select count(*) from public.space_entry_instructions;', owner) == '0'
+        print('PASS entry instructions: owner-only writes, released only to the confirmed driver/owner, hidden after cancellation')
+
+        sql(f"select public.delete_space_block('{block['id']}');", other, error='SPACE_FORBIDDEN')
+        sql(f"select public.delete_space_block('{block['id']}');", owner)
+        assert obj(f"select public.booking_quote('test-space',{at('3 hours')},{at('5 hours')},'Car');", role='anon')['available'] is True
+        sql("update public.parking_spaces set opening_schedule='"+json.dumps(narrow)+"'::jsonb where id='test-space';", owner)
+        print('PASS release: deleted blocks and cancelled bookings free the space and the schedule again')
+        print('All eight migrations and local database checks passed. Hosted Supabase integration remains manual.')
     finally:
         if started:
             run('pg_ctl', '-D', data, '-m', 'immediate', '-w', 'stop')

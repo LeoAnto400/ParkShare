@@ -50,3 +50,12 @@
 .card-earnings>.muted{font-size:11px;margin-bottom:6px}
 .account-earnings{margin-top:32px;padding:24px;background:var(--green-light);border:1px solid var(--line);border-radius:var(--radius)}
 .account-earnings h2{font-size:26px}.account-earnings .card-earnings-grid{gap:24px}.account-earnings .card-earnings-grid dd{font-size:28px}
+/* 008: availability list, blocked periods, owner figures, period filter, private entry instructions. */
+.availability-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}.availability-list li{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}.availability-list .chips{margin:0}
+.chip.slot-free{background:var(--accent);color:var(--green)}.chip.slot-taken{background:#f3e3df;color:#7a2e1f;border-color:#e6c4bb}.chip.slot-closed{background:var(--cream);color:var(--muted)}
+.block-list{list-style:none;padding:0;display:grid;gap:12px}.block-list .reservation-card p{margin:0 0 6px}
+#owner-stats{margin:0 0 24px}#owner-stats .metric{margin:0}#owner-stats dt{font-size:13px;color:var(--muted)}#owner-stats .muted{margin:4px 0 0;font-size:13px}
+.size-limits,.period-filter{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:6px}.period-filter input{width:100%}
+.entry-instructions{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--green-light)}.entry-instructions h3{margin:0 0 6px;font-size:16px}.entry-instructions p{margin:0;white-space:pre-line}
+@media(max-width:600px){.availability-list li{grid-template-columns:1fr;gap:6px}}
+.owner-card .owner-actions .button{font-size:13px;padding:10px 15px;line-height:normal}#owner-stats{margin-top:24px}.entry-instructions{margin-bottom:12px}

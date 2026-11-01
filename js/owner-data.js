@@ -19,6 +19,12 @@ export function validateListing(row) {
   if (!Number.isFinite(row.hourly_price) || row.hourly_price < 0 || row.hourly_price > 999999.99
       || Math.abs(row.hourly_price * 100 - Math.round(row.hourly_price * 100)) > 0.00001) throw new Error('Enter a price from ₹0 to ₹999999.99 with at most two decimal places.');
   if (!Array.isArray(row.supported_vehicles) || !row.supported_vehicles.length || row.supported_vehicles.some(v => !['Car', 'Bike', 'SUV'].includes(v))) throw new Error('Select at least one supported vehicle.');
+  if (row.landmark != null && (typeof row.landmark !== 'string' || !row.landmark.trim() || row.landmark.trim().length > 120)) throw new Error('A landmark must be 1–120 characters, or leave it empty.');
+  for (const [field, limit, label] of [['max_vehicle_length_m', 20, 'length'], ['max_vehicle_height_m', 10, 'height']]) {
+    const value = row[field];
+    if (value != null && (!Number.isFinite(value) || value <= 0 || value > limit || Math.abs(value * 100 - Math.round(value * 100)) > 0.00001))
+      throw new Error(`Maximum vehicle ${label} must be more than 0 and at most ${limit} metres (two decimals), or leave it empty.`);
+  }
   for (const field of ['amenities', 'parking_rules']) {
     if (!Array.isArray(row[field]) || row[field].some(v => typeof v !== 'string' || !v.trim())) throw new Error('Amenities and rules must contain nonempty text.');
   }
@@ -39,6 +45,10 @@ async function request(method, id, body) {
     }, ...(body ? { body: JSON.stringify(body) } : {}) });
   } catch { throw new Error('Network failure. Your changes were not confirmed. Reload your listings before retrying a save.'); }
   if (!response.ok) {
+    // Database rules raise readable codes; show them instead of a bare HTTP status.
+    let code;
+    try { code = (await response.json())?.message; } catch { code = undefined; }
+    if (code === 'SCHEDULE_CONFLICTS_BOOKING') throw new Error('These opening hours would leave a confirmed booking outside the new hours. Keep the booked times open, or ask the driver to cancel first. Nothing was saved.');
     if (method === 'DELETE' && response.status === 409) throw new Error('This listing has booking history and cannot be deleted. Unpublish it to stop new reservations; existing bookings are retained.');
     throw new Error(`Listing request failed (HTTP ${response.status}). Check your session and run the required migrations in the new project.`);
   }

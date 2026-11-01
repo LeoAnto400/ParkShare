@@ -1,7 +1,7 @@
 import { protectPage } from './protected-page.js';
-import { getBooking } from './booking-data.js';
+import { getBooking, entryInstructions } from './booking-data.js';
 import { paymentHistory } from './management-data.js';
-import { bookingDetails, historyView } from './booking-view.js';
+import { bookingDetails, historyView, entryInstructionsView } from './booking-view.js';
 import { canPay } from './booking-state.js';
 import { element } from './ui.js';
 
@@ -19,7 +19,13 @@ async function load() {
     status.textContent = booking.status === 'confirmed'
       ? 'Reservation confirmed. No real payment has been collected.'
       : 'Reservation cancelled. No real money has been collected or refunded.';
-    content.append(bookingDetails(booking), element('p', 'demo-disclaimer', 'Demo payment — no real money is collected.'));
+    content.append(bookingDetails(booking));
+    // Released by the database only to this booking's driver/owner while it is confirmed and not ended.
+    let text, failed = false;
+    if (booking.status === 'confirmed' && Date.parse(booking.departure) > Date.now()) {
+      try { text = (await entryInstructions([booking.id])).get(booking.id) || ''; } catch { failed = true; }
+    }
+    content.append(entryInstructionsView(booking, text, failed), element('p', 'demo-disclaimer', 'Demo payment — no real money is collected.'));
     const links = element('div', 'owner-actions');
     if (booking.driver_id === current.user.id) {
       const my = element('a', 'button secondary', 'My bookings'); my.href = 'my-bookings.html'; links.append(my);

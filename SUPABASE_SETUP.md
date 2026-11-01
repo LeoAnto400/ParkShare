@@ -241,3 +241,24 @@ Restart the static server if needed: `python -m http.server 5500 --bind 127.0.0.
 - Verify ₹100/hour → ₹100 driver, ₹5 platform, ₹95 owner; ₹40 × 90 minutes → ₹60 driver, ₹3 platform, ₹57 owner. Old reservation prices/payment histories stay unchanged. Payment/cancellation/earnings use stored amounts.
 
 The coordinate controls are removed; existing coordinate columns and booking snapshots remain intact. New listings use address-based directions. No maps/geocoding, real money or email flows were added.
+
+## Migration 008: profiles, blocked periods, entry instructions and availability search
+
+In the NEW ParkShare SQL Editor, run `sql/008_profiles_blocks_entry_search.sql` once after 001–007. Do not rerun earlier migrations or reset data. It:
+
+- creates `public.profiles` (name, phone) with own-row RLS, a trigger on `auth.users` that creates a profile from signup metadata, and a backfill for existing accounts (empty phone);
+- adds `landmark`, `max_vehicle_length_m` and `max_vehicle_height_m` to `parking_spaces` with range checks and owner column grants;
+- creates `space_entry_instructions` (owner-readable only) with `set_space_entry_instructions` and `booking_entry_instructions` RPCs;
+- creates `space_blocks` (no overlaps, owner-readable only) with `create_space_block` / `delete_space_block` RPCs that lock the listing and reject periods overlapping confirmed bookings;
+- adds a trigger rejecting opening-hour changes that would strand a confirmed, not-yet-ended booking;
+- replaces `booking_quote` and `create_booking` so owner blocks count as unavailable (all 007 locking, pricing and retry behaviour is unchanged);
+- adds public `space_busy_intervals` (time ranges only) and `available_space_ids` for the search period filter.
+
+### Manual hosted checklist (NEW project only)
+
+1. Sign up with a phone number; open **Profile** and confirm name/phone; change the phone and reload.
+2. As the owner, add a landmark, size limits and entry instructions; save and reopen. Confirm the public listing (anonymous REST read) does not contain the instructions.
+3. Book as a driver. Confirm entry instructions appear on the booking details page and in My bookings; cancel and confirm they disappear.
+4. As the owner, block a period that overlaps that booking (rejected), then a free period (accepted). As the driver, confirm the space page shows it as *owner blocked* and a quote for it is unavailable.
+5. As the owner, narrow opening hours so the booking falls outside them (rejected with a clear message).
+6. In search, choose arrival/departure inside the block: the space disappears; choose a free period: it returns.

@@ -5,6 +5,8 @@ import { summarizeOwnerBookings, renderBookingSummary } from './owner-booking-su
 import { previewPrice, money } from './booking-rules.js';
 import { isDemo, getClient, session } from './auth.js';
 import { element } from './ui.js';
+import { bookingCategory } from './booking-state.js';
+import { loadEntryInstructions, saveEntryInstructions, validateEntryInstructions } from './owner-extras.js';
 import { loadOwnedSpaces, createOwnedSpace, updateOwnedSpace, deleteOwnedSpace, uploadPhoto, validateListing, validatePhoto } from './owner-data.js';
 
 const status = document.querySelector('#owner-status');
@@ -21,6 +23,9 @@ let listings = [];
 let ownerBookings = [], bookingLoadFailed = false;
 let cardEarnings = null;
 let editing = null;
+// Original private instructions for the open editor; null means they could not be loaded.
+let loadedInstructions = '';
+let instructionsVersion = 0;
 let createId;
 let busy = false;
 let refreshVersion = 0;
@@ -40,6 +45,10 @@ function openEditor(row = null) {
   formStatus.textContent = '';
   for (const name of ['title', 'description', 'locality', 'city', 'address', 'hourly_price']) form.elements[name].value = row?.[name] ?? '';
   form.elements.parking_rules.value = row?.parking_rules.join('\n') ?? '';
+  form.elements.landmark.value = row?.landmark ?? '';
+  form.elements.max_vehicle_length_m.value = row?.max_vehicle_length_m ?? '';
+  form.elements.max_vehicle_height_m.value = row?.max_vehicle_height_m ?? '';
+  loadInstructions(row);
   form.querySelectorAll('[name=amenity]').forEach(input => { input.checked = !!row?.amenities.includes(input.value); });
   form.elements.other_amenities.value = (row?.amenities || []).filter(value => !standardAmenities.includes(value)).join('\n');
   schedule.set(row?.opening_schedule);
@@ -74,7 +83,9 @@ function render() {
         mutate(() => deleteOwnedSpace(row.id), 'Listing deleted.');
       }
     });
-    actions.append(edit, publish, remove);
+    const block = element('a', 'button secondary', 'Block times');
+    block.href = `owner-space.html?${new URLSearchParams({ id: row.id })}#blocks-section`;
+    actions.append(edit, publish, block, remove);
     card.append(actions);
     const overview = element('section', 'booking-overview');
     overview.dataset.spaceId = row.id;
@@ -84,6 +95,7 @@ function render() {
     list.append(card);
   }
   refreshBookingSummaries();
+  renderStats();
   accountEarnings.replaceChildren(cardEarningsView(cardEarnings, null, true));
   accountEarnings.hidden = false;
 }
@@ -136,13 +148,17 @@ form.addEventListener('submit', async event => {
     title: values.get('title').trim(), description: values.get('description').trim(),
     locality: values.get('locality').trim(), city: values.get('city').trim(), address: values.get('address').trim(),
     hourly_price: Number(values.get('hourly_price')), supported_vehicles: values.getAll('vehicle'),
-    amenities: [...new Set([...values.getAll('amenity'), ...lines('other_amenities')])], parking_rules: lines('parking_rules'), published: form.elements.published.checked
+    amenities: [...new Set([...values.getAll('amenity'), ...lines('other_amenities')])], parking_rules: lines('parking_rules'), published: form.elements.published.checked,
+    landmark: values.get('landmark').trim() || null,
+    max_vehicle_length_m: optionalNumber(values.get('max_vehicle_length_m')),
+    max_vehicle_height_m: optionalNumber(values.get('max_vehicle_height_m'))
   };
+  let instructions;
   // If an address moves, discard the old listing pin; existing booking snapshots stay intact.
   if (editing && ['address', 'locality', 'city'].some(key => row[key] !== editing[key])) {
     row.latitude = null; row.longitude = null;
   }
-  try { row.opening_schedule = schedule.get(); validateListing(row); if (!photos.length) throw new Error('Add at least one parking photo.'); photos.forEach(photo => { if (photo.file) validatePhoto(photo.file); }); }
+  try { row.opening_schedule = schedule.get(); validateListing(row); instructions = validateEntryInstructions(values.get('entry_instructions')); if (!photos.length) throw new Error('Add at least one parking photo.'); photos.forEach(photo => { if (photo.file) validatePhoto(photo.file); }); }
   catch (error) { formStatus.textContent = error.message; return; }
   setBusy(true);
   formStatus.textContent = 'Uploading new photos, then saving your space…';
@@ -150,10 +166,18 @@ form.addEventListener('submit', async event => {
     // Cache each completed upload on its item so an interrupted save does not upload it again.
     for (const photo of photos) if (!photo.url) photo.url = await uploadPhoto(photo.file);
     row.image_urls = photos.map(photo => photo.url);
+    const spaceId = editing ? editing.id : createId;
     if (editing) await updateOwnedSpace(editing.id, row);
     else await createOwnedSpace(createId, row);
+    // Private instructions are a separate guarded write. Skip it when unchanged, and never
+    // overwrite instructions that failed to load (loadedInstructions === null).
+    let note = '';
+    if (loadedInstructions !== null && instructions !== loadedInstructions) {
+      try { await saveEntryInstructions(spaceId, instructions); loadedInstructions = instructions; }
+      catch (error) { note = ` The listing was saved, but entry instructions were not: ${error.message} Edit the space to retry.`; }
+    }
     panel.hidden = true;
-    await refresh('Space saved. Published spaces appear in search after refreshing.');
+    await refresh(`Space saved. Published spaces appear in search after refreshing.${note}`);
   } catch (error) {
     // Keep all entered values and the selected file for correction/retry.
     formStatus.textContent = `${error.message} If a save was interrupted, refresh your listings before retrying. Uploaded but unused photos may need manual cleanup.`;
@@ -180,6 +204,7 @@ if (isDemo) {
           controls.hidden = true;
           list.replaceChildren();
           accountEarnings.replaceChildren(); accountEarnings.hidden = true;
+          document.querySelector('#owner-stats').hidden = true;
           fields.disabled = true;
           status.textContent = 'You are signed out. Log in again to manage spaces.';
         }
@@ -222,3 +247,41 @@ form.elements.photo.addEventListener('change', () => {
   } catch (error) { formStatus.textContent = error.message; }
   form.elements.photo.value = ''; // Allow another selection, including the same filename.
 });
+
+function optionalNumber(value) {
+  return value === null || String(value).trim() === '' ? null : Number(value);
+}
+// Entry instructions are private and loaded separately from the listing row.
+async function loadInstructions(row) {
+  const field = form.elements.entry_instructions;
+  const version = ++instructionsVersion;
+  field.value = '';
+  if (!row) { loadedInstructions = ''; field.disabled = false; return; }
+  loadedInstructions = null; field.disabled = true; field.placeholder = 'Loading private instructions…';
+  try {
+    const text = await loadEntryInstructions(row.id);
+    if (version !== instructionsVersion) return;
+    loadedInstructions = text; field.value = text; field.placeholder = '';
+  } catch {
+    if (version !== instructionsVersion) return;
+    field.placeholder = 'Could not load entry instructions. Other changes can still be saved; reopen the editor to retry.';
+  } finally { if (version === instructionsVersion) field.disabled = loadedInstructions === null; }
+}
+// Basic owner figures, derived from the rows already loaded for the cards.
+function renderStats() {
+  const stats = document.querySelector('#owner-stats');
+  const published = listings.filter(row => row.published).length;
+  const counts = { upcoming: 0, active: 0, past: 0, cancelled: 0 };
+  for (const booking of ownerBookings) { const category = bookingCategory(booking); if (category in counts) counts[category]++; }
+  const figures = [['Listings', `${listings.length}`, `${published} published · ${listings.length - published} draft`]];
+  if (bookingLoadFailed) figures.push(['Bookings', '—', 'Reservations could not be loaded. Refresh to retry.']);
+  else figures.push(['Bookings', `${ownerBookings.length}`, 'All reservations on your spaces'],
+    ['Upcoming', `${counts.upcoming + counts.active}`, `${counts.active} in progress now`],
+    ['Completed', `${counts.past}`, 'Confirmed and already ended'], ['Cancelled', `${counts.cancelled}`, 'Released back to availability']);
+  stats.replaceChildren(...figures.map(([label, value, note]) => {
+    const card = element('dl', 'metric');
+    card.append(element('dt', '', label), element('dd', '', value), element('p', 'muted', note));
+    return card;
+  }));
+  stats.hidden = false;
+}

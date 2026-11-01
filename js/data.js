@@ -38,6 +38,8 @@ function validate(space) {
     && typeof space.price === 'number' && Number.isFinite(space.price) && space.price >= 0
     && texts(space.vehicles) && space.vehicles.length > 0 && space.vehicles.every(v => ['Car', 'Bike', 'SUV'].includes(v))
     && texts(space.amenities) && texts(space.rules) && typeof space.featured === 'boolean'
+    && (space.landmark == null || text(space.landmark))
+    && [space.maxLength, space.maxHeight].every(v => v == null || (typeof v === 'number' && Number.isFinite(v) && v > 0))
     && Array.isArray(space.photos) && space.photos.length > 0
     && space.photos.every(photo => photo && text(photo.src) && /^https:\/\//.test(photo.src) && text(photo.alt));
   if (!valid) throw new Error('A parking listing contains invalid or missing fields. Check the sample data or database schema.');
@@ -52,6 +54,9 @@ function mapRow(row) {
     locality: row.locality, city: row.city, address: row.address,
     latitude: row.latitude ?? null, longitude: row.longitude ?? null,
     openingSchedule: row.opening_schedule,
+    landmark: row.landmark ?? null,
+    // PostgREST returns numeric columns as JSON numbers; null means no limit.
+    maxLength: row.max_vehicle_length_m ?? null, maxHeight: row.max_vehicle_height_m ?? null,
     ownerId: row.owner_id || null, price: row.hourly_price, vehicles: row.supported_vehicles,
     amenities: row.amenities, rules: row.parking_rules, featured: row.featured,
     photos: row.image_urls.map(src => ({ src, alt: row.owner_id ? 'Owner-provided parking photo' : 'Illustrative sample photo, not the actual property' }))

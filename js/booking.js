@@ -1,6 +1,6 @@
 import { isDemo, session } from './auth.js';
 import { getQuote, reserve } from './booking-data.js';
-import { indianTimeToUTC, validateInterval, registrationNumber, previewPrice, money } from './booking-rules.js';
+import { indianTimeToUTC, validateInterval, registrationNumber, previewPrice, money, indianDisplay } from './booking-rules.js';
 import { element } from './ui.js';
 
 export function setupBooking(space) {
@@ -69,7 +69,7 @@ export function setupBooking(space) {
       if (version !== revision) return;
       quote = result;
       displayPrice(result, 'Current database quote');
-      status.textContent = result.available ? 'Available now. Review this quote, then confirm. This check does not hold the spot. No payment will be collected.' : 'This spot is reserved for part of those times. Please choose different times.';
+      status.textContent = result.available ? 'Available now. Review this quote, then confirm. This check does not hold the spot. No payment will be collected.' : 'Unavailable for part of those times (already booked or blocked by the owner). Check the availability list and choose different times.';
     } catch (error) { status.textContent = error.message; }
     finally { setBusy(false); }
   });
@@ -86,7 +86,7 @@ export function setupBooking(space) {
     } catch (error) {
       status.textContent = error.message;
       // Only explicit database rejection proves no booking was created. Network/unknown errors retain key.
-      if (['PRICE_CHANGED','SLOT_TAKEN','INVALID_INTERVAL','UNSUPPORTED_VEHICLE','INVALID_REGISTRATION','SELF_BOOKING','SPACE_UNAVAILABLE','OUTSIDE_OPENING_HOURS'].includes(error.code)) {
+      if (['PRICE_CHANGED','SLOT_TAKEN','INVALID_INTERVAL','UNSUPPORTED_VEHICLE','INVALID_REGISTRATION','SELF_BOOKING','SPACE_UNAVAILABLE','OUTSIDE_OPENING_HOURS','SPACE_BLOCKED'].includes(error.code)) {
         sessionStorage.removeItem(key); pending = null; quote = null;
       }
       retry.hidden = !pending;
@@ -108,6 +108,9 @@ export function setupBooking(space) {
         return;
       }
       if (space.ownerId === current.user.id) throw new Error('You cannot reserve your own parking space.');
+      // Explicit confirmation step: nothing is sent until the driver agrees to this summary.
+      const summary = `Book ${space.title}?\n\n${indianDisplay(data.p_arrival)}\nto ${indianDisplay(data.p_departure)}\n${data.p_vehicle_type} · ${registration}\nTotal ${money(quote.total)} (5% platform fee included)\n\nDemo payment — no real money is collected.`;
+      if (!window.confirm(summary)) { status.textContent = 'Booking not confirmed. Nothing was sent.'; return; }
       pending = { userId: current.user.id, request: { ...data, p_registration: registration,
         p_expected_hourly_rate: quote.hourly_rate, p_idempotency_key: crypto.randomUUID() } };
       try { sessionStorage.setItem(key, JSON.stringify(pending)); }

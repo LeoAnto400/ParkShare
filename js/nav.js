@@ -19,7 +19,7 @@ function pageLink(label, destination) {
   if (new URL(destination, window.location.href).pathname === window.location.pathname) link.setAttribute('aria-current', 'page');
   return link;
 }
-nav.append(pageLink('Find parking', 'search.html'), pageLink('My spaces', 'dashboard.html'), pageLink('My bookings', 'my-bookings.html'));
+nav.append(pageLink('Find parking', 'search.html'), pageLink('My spaces', 'dashboard.html'), pageLink('My bookings', 'my-bookings.html'), pageLink('Profile', 'profile.html'));
 const account = element('span', 'account-nav');
 account.setAttribute('aria-live', 'polite');
 nav.append(account);

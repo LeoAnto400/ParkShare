@@ -2,7 +2,7 @@
 
 ParkShare is a parking-space sharing website developed as a Web Technologies college demonstration. Owners publish available parking spaces, and drivers find a space, check its availability, reserve it, and use a clearly labelled simulated payment flow. The project demonstrates semantic HTML, responsive CSS, JavaScript events and DOM manipulation, asynchronous requests, authentication, relational databases, and database-enforced access control.
 
-This report describes the current implementation through migration 007. New listed prices include the platform fee, the owner form supports multiple photos and weekly opening hours, and coordinate inputs have been removed. Earlier bookings retain their original stored prices. Real payments and withdrawals are outside the implemented scope.
+This report describes the current implementation through migration 008. New listed prices include the platform fee, the owner form supports multiple photos and weekly opening hours, and coordinate inputs have been removed. Migration 008 adds user profiles with phone numbers, listing landmarks and vehicle size limits, private entry instructions, owner-blocked periods, protection against schedule changes that conflict with bookings, a 7-day availability view and availability-aware search. Earlier bookings retain their original stored prices. Real payments and withdrawals are outside the implemented scope.
 
 ## Project purpose and users
 
@@ -12,9 +12,9 @@ There are three usage contexts:
 
 | User context | Available functions |
 | --- | --- |
-| Visitor | Browse published spaces, filter and sort results, view details and reviews, get directions, and request availability/pricing in Supabase mode. |
-| Signed-in driver | Create reservations, view personal bookings, simulate payment, cancel eligible bookings, and review completed reservations. |
-| Signed-in owner | Create and edit listings, manage photos and opening hours, publish/unpublish spaces, view reservations for owned spaces, and inspect demo earnings. |
+| Visitor | Browse published spaces, search by area/address/landmark, filter by date/time, price, vehicle and facilities, sort, view details, 7-day availability and reviews, get directions, and request availability/pricing in Supabase mode. |
+| Signed-in driver | Maintain a profile (name, phone), create reservations after an explicit confirmation step, view personal bookings with private entry instructions, simulate payment, cancel eligible bookings, and review completed reservations. |
+| Signed-in owner | Create and edit listings (including landmark, size limits and private entry instructions), manage photos and opening hours, block specific periods, publish/unpublish spaces, view reservations and summary figures for owned spaces, and inspect demo earnings. |
 
 Owner and driver are capabilities of the same account system, not separate authentication systems. An account can list its own spaces and book another person's space. Owners cannot reserve their own listings.
 
@@ -66,21 +66,23 @@ The browser's price calculation and action eligibility checks improve usability;
 
 Every page uses one shared header renderer with consistent ParkShare branding. The navigation contains Find parking, My spaces, and My bookings. The final control is Log in for a confirmed signed-out state or Logout for a restored signed-in session. During restoration, the header displays a session-checking state; a failed check offers retry instead of assuming a login state.
 
-Signup uses email and password. For the college demo, Confirm email must be disabled manually in the NEW Supabase project. A successful signup redirects only when Supabase returns a valid session. Without a session, the page explains the required configuration.
+Signup collects name, phone number, email and password. The phone is validated in the browser (10–15 digits, optional +) and sent as signup metadata; a database trigger copies name and phone into `public.profiles`, storing an invalid phone as empty rather than blocking signup. The Profile page (shared nav) lets each user update their name and phone through REST `fetch()`; RLS restricts every request to the user's own row, and the email is shown read-only. For the college demo, Confirm email must be disabled manually in the NEW Supabase project. A successful signup redirects only when Supabase returns a valid session. Without a session, the page explains the required configuration.
 
 Protected pages preserve supported return destinations through login. The SDK manages session persistence and refresh. The app does not replace authentication with a localStorage flag. OTP, magic-link, password-reset, resend, invitation, and welcome-email flows are not implemented.
 
 ### Discovery and space details
 
-The home page offers a location search and featured listings. Search supports case-insensitive matching across title, address, locality, and city, combined with maximum hourly price, vehicle type, EV charging, and covered-parking filters. Results can be sorted by price in either direction.
+The home page offers a location search and featured listings. Search supports case-insensitive matching across title, address, locality, city, and nearby landmark, combined with maximum hourly price, vehicle type, EV charging, and covered-parking filters. An optional arrival/departure period (IST) shows only spaces open and free for the whole period: in Supabase mode the `available_space_ids` function checks opening hours, confirmed bookings and owner blocks; demo mode checks opening hours only and labels the result. The chosen period is carried into the booking form. Results can be sorted by price in either direction.
 
-Entire listing cards are clickable using native links, including keyboard navigation. Owner edit/publish controls remain separate. Filtering occurs in the browser after listings load. Reset restores the refinements while keeping the chosen location. Loading, empty, and error states have visible feedback and retry controls.
+Entire listing cards are clickable using native links, including keyboard navigation. Owner edit/publish controls remain separate. Field filtering occurs in the browser after listings load. Clear all filters restores every refinement, including the period, while keeping the chosen location. Loading, empty, and error states have visible feedback and retry controls.
 
-Space details show the gallery, description, address, supported vehicles, amenities, rules, weekly opening hours, rating summary, reviews, and booking form. Photo failures use a local SVG fallback. Demo/sample photos are illustrative rather than evidence of an actual property.
+Space details show the gallery, description, address, nearby landmark, supported vehicles and size limits, amenities, rules, weekly opening hours, a 7-day availability list (free ranges plus booked and owner-blocked times, without identities or reasons), rating summary, reviews, and booking form with a clear Book now button. A note explains that exact entry instructions are shared after confirmation. Photo failures use a local SVG fallback. Demo/sample photos are illustrative rather than evidence of an actual property.
 
 ### Owner listing management
 
-My spaces supports creating drafts, editing listings, publishing, unpublishing, and deletion where history permits it. Editable fields include title, description, locality, city, address, hourly price, supported vehicles, amenities, parking rules, photos, publication status, and weekly opening hours.
+My spaces supports creating drafts, editing listings, publishing, unpublishing, and deletion where history permits it. Editable fields include title, description, locality, city, address, optional nearby landmark, hourly price, supported vehicles, optional maximum vehicle length and height (metres), amenities, parking rules, private entry instructions, photos, publication status, and weekly opening hours.
+
+Entry instructions (gate codes, bay numbers) are stored in a separate `space_entry_instructions` table, never in the public listing row. They are saved through a guarded function after the listing saves, are skipped when unchanged, and are never overwritten if they failed to load into the editor.
 
 Amenities have checkboxes for EV charging, Covered parking, Security, and CCTV camera, plus an Others text field with one additional amenity per line. Existing custom amenities are retained when a listing is edited.
 
@@ -96,11 +98,15 @@ An owner can choose either the same hours on selected weekdays or different hour
 
 Schedules use Monday-to-Sunday ordering and Asia/Kolkata time. A closing time of 00:00 means midnight at the end of that day. A range of 00:00–00:00 means 24-hour opening. Overnight service is represented across adjacent days: Monday 22:00–00:00 and Tuesday 00:00–02:00, for example.
 
-The whole reservation must fit within opening windows, including every crossed date. Both quote and booking creation enforce this in PostgreSQL. Existing listings default to 24/7 until edited. Changing opening hours does not cancel an existing confirmed reservation.
+The whole reservation must fit within opening windows, including every crossed date. Both quote and booking creation enforce this in PostgreSQL. Existing listings default to 24/7 until edited. Changing opening hours never cancels an existing reservation; instead, a database trigger rejects any schedule change that would leave a confirmed, not-yet-ended booking outside the new hours, and the editor explains why.
+
+### Blocked periods
+
+On a space's management page (dashboard card → Block times), an owner can block specific dates or time ranges when they need the space, with an optional private note. Blocks are created and removed only through protected functions. A block cannot overlap a confirmed booking or another block, and creating one locks the listing row so it cannot race a simultaneous booking. Quotes report blocked times as unavailable, booking creation rejects them, and the public availability list shows them as owner blocked without the note.
 
 ### Reservations and availability
 
-The booking form collects arrival, departure, supported vehicle type, and registration. Arrival must be in the future; duration must be between 30 minutes and seven days. Unsupported vehicles, invalid registration, unpublished listings, self-bookings, and out-of-hours intervals are rejected.
+The booking form collects arrival, departure, supported vehicle type, and registration. Arrival must be in the future; duration must be between 30 minutes and seven days. Unsupported vehicles, invalid registration, unpublished listings, self-bookings, out-of-hours intervals, and owner-blocked intervals are rejected. After a successful availability check, Book now shows a summary (space, times, vehicle, total) and sends nothing until the driver confirms.
 
 Date/time input is explicitly interpreted as Asia/Kolkata, even when the browser uses another timezone. PostgreSQL stores timestamps using `timestamptz`, and the interface displays them in IST.
 
@@ -143,9 +149,9 @@ All money-related activity is labelled: **Demo payment — no real money is coll
 
 ### Driver bookings and owner reservations
 
-My bookings displays the signed-in user's driver reservations with upcoming, active, past, and cancelled filters. Categories are derived from timestamps and reservation status; they do not require a scheduled database job. Drivers can view details, resume eligible checkout, and cancel eligible upcoming bookings.
+My bookings displays the signed-in user's driver reservations with upcoming, active, past, and cancelled filters. Categories are derived from timestamps and reservation status; they do not require a scheduled database job. Drivers can view details, directions, resume eligible checkout, and cancel eligible upcoming bookings. Confirmed bookings that have not ended show the owner's private entry instructions, fetched for the whole list in one request; the booking details page shows them as well. They disappear once a booking is cancelled or ends.
 
-The owner dashboard lists spaces under a single Owner dashboard heading. Clicking a space opens its protected management page with full listing details, a read-only reservation history and category filters, and daily/monthly earnings selected by arrival date in Asia/Kolkata. The former combined reservations and earnings sections have moved off the main dashboard. Owners cannot mark a driver's booking paid, cancel it, or change its stored prices/status. Reservations remain viewable after a listing is unpublished.
+The owner dashboard opens with summary figures: number of listings (published and draft) and bookings (total, upcoming, completed, cancelled). It lists spaces under a single Owner dashboard heading; each card has Edit, Publish/Unpublish, Block times and Delete actions. Clicking a space opens its protected management page with full listing details, private entry instructions, blocked periods, a read-only reservation history and category filters, and daily/monthly earnings selected by arrival date in Asia/Kolkata. The former combined reservations and earnings sections have moved off the main dashboard. Owners cannot mark a driver's booking paid, cancel it, or change its stored prices/status. Reservations remain viewable after a listing is unpublished.
 
 Below the space cards, Account earnings combines total, today’s and this month’s owner earnings across all owned spaces, including unpublished listings. It uses the same protected records and period rules as the card figures, without additional requests or another fee deduction.
 
@@ -178,6 +184,9 @@ Directions links use stored coordinates when available, otherwise the full addre
 | `public.bookings` | Driver/listing references, time interval, vehicle information, reservation/payment states, retry key, price snapshots, location snapshots, and pricing model. |
 | `public.demo_payment_events` | Append-only simulation history with booking/actor references, request keys, outcome, amount, and timestamps. |
 | `public.booking_reviews` | One driver review per historical booking, with rating, comment, and timestamps. |
+| `public.profiles` | One row per account: name and phone, created from signup metadata; own-row RLS. |
+| `public.space_entry_instructions` | Private entry instructions per listing; owner-readable, released to drivers only through a guarded function. |
+| `public.space_blocks` | Owner-blocked periods per listing; non-overlapping, never on top of a confirmed booking. |
 | `storage.buckets` and `storage.objects` | Supabase-managed image storage metadata and policies for the parking-images bucket. |
 
 One user can own many spaces and create many bookings. A space can have many non-overlapping reservations. A booking can have multiple payment-history events and at most one review.
@@ -204,7 +213,8 @@ All paths below are relative to `C:\Users\leoan\projects\ParkShare`.
 | `pages/signup.html` | Name/email/password signup form and status feedback. |
 | `pages/login.html` | Email/password login form and return-destination flow. |
 | `pages/dashboard.html` | Owner dashboard with clickable listing cards, booking overviews, and listing CRUD/editor. |
-| `pages/owner-space.html` | Protected full listing details, scoped reservation history, daily/monthly earnings, and detailed earnings filters for one owned space. |
+| `pages/owner-space.html` | Protected full listing details, private entry instructions, blocked periods, scoped reservation history, daily/monthly earnings, and detailed earnings filters for one owned space. |
+| `pages/profile.html` | Protected profile editor for name and phone. |
 | `pages/confirmation.html` | Protected persisted booking-details page with relevant driver/owner links and payment history. |
 | `pages/my-bookings.html` | Protected driver booking list with category filters and permitted actions. |
 | `pages/checkout.html` | Simulated checkout actions, stored booking breakdown, retry controls, receipt, and history. |
@@ -238,7 +248,12 @@ All paths below are relative to `C:\Users\leoan\projects\ParkShare`.
 | `js/owner-booking-summary.js` | Groups owner reservations by space and renders last/current/next summaries without counting cancelled bookings. |
 | `js/reservations-list.js` | Shared driver/owner reservation-list controller with filters, counts, refresh, details links, cancellation, and eligible review links. |
 | `js/checkout.js` | Controls simulated success/failure, receipt display, safe retry keys, current payment state, and history refresh. |
-| `js/owner-space.js` | Loads one owned space, renders full details and reviews, and requests protected daily/monthly earnings totals. |
+| `js/owner-space.js` | Loads one owned space, renders full details, entry instructions and reviews, manages blocked periods, and requests protected daily/monthly earnings totals. |
+| `js/owner-extras.js` | Owner entry-instruction and blocked-period reads (REST) and writes (RPC), with validation. |
+| `js/availability.js` | IST day windows, a browser mirror of the opening-hours check, free-slot calculation, and the 7-day availability list. |
+| `js/profile-rules.js` | Phone normalization and profile validation shared by signup and the Profile page. |
+| `js/profile-data.js` | Own-profile REST reads and updates. |
+| `js/profile.js` | Profile page controller. |
 | `js/earning-periods.js` | Calculates India calendar defaults and inclusive monthly date ranges. |
 | `js/earnings.js` | Handles owner earnings filters, aggregate metrics, date input, booking breakdown rendering, and pagination. |
 | `js/reviews.js` | Review eligibility/text validation, summary labels, public review fetching/rendering, refresh, and pagination. |
@@ -267,8 +282,9 @@ Apply these in sequence to the NEW project. Later migrations replace selected fu
 | `sql/005_demo_payments_and_management.sql` | Adds payment status/history, protected payment simulation and cancellation, and paginated owner reservations. |
 | `sql/006_earnings_reviews_locations.sql` | Adds review schema/functions, public rating summaries, owner earnings, coordinates, and booking-location snapshots. |
 | `sql/007_listing_hours_inclusive_pricing.sql` | Adds validated weekly schedules, enforces opening windows, changes new booking prices to include the fee, preserves historical pricing markers, and updates owner projections. |
+| `sql/008_profiles_blocks_entry_search.sql` | Adds profiles, listing landmark and size limits, private entry instructions, owner blocks, the schedule-conflict guard, block-aware quote/create functions, busy-interval reads and availability search. |
 
-Important exposed functions include `booking_quote`, `create_booking`, `simulate_booking_payment`, `cancel_booking`, `owner_reservations`, `owner_earnings`, `save_booking_review`, `delete_booking_review`, `rating_summaries`, and `public_space_reviews`. Internal helpers validate intervals/schedules, enforce opening windows, and snapshot locations.
+Important exposed functions include `booking_quote`, `create_booking`, `create_space_block`, `delete_space_block`, `set_space_entry_instructions`, `booking_entry_instructions`, `space_busy_intervals`, `available_space_ids`, `simulate_booking_payment`, `cancel_booking`, `owner_reservations`, `owner_earnings`, `save_booking_review`, `delete_booking_review`, `rating_summaries`, and `public_space_reviews`. Internal helpers validate intervals/schedules, enforce opening windows, and snapshot locations.
 
 ### Tests
 
@@ -285,6 +301,7 @@ Important exposed functions include `booking_quote`, `create_booking`, `simulate
 | `tests/nav.test.mjs` | Tests shared header replacement and correct Login/Logout or session-error controls. |
 | `tests/earning-periods.test.mjs` | Tests IST date boundaries, month lengths, and safe owner-detail login return paths. |
 | `tests/schedule.test.mjs` | Tests daily/custom schedule validation, midnight rules, and inclusive price rounding. |
+| `tests/availability-profile.test.mjs` | Tests the browser opening-hours mirror, free-slot calculation, phone/profile validation, block validation and the new listing fields. |
 | `tests/run_sql_checks.py` | Starts a disposable local PostgreSQL instance, applies migrations, checks constraints/permissions/business rules, and stops/removes the test database. Uses minimal Supabase auth/storage stubs, never the real project. |
 
 ### Configuration and documentation
@@ -299,7 +316,7 @@ Important exposed functions include `booking_quote`, `create_booking`, `simulate
 | `AGENTS.md` | Repository-specific development constraints and preservation/security requirements for future changes. |
 | `PROJECT_REPORT.md` | This consolidated account of the current project, architecture, and file responsibilities. |
 
-The documentation references `.env.example`, but that template is absent from the inspected working tree. The existing local `.env` is present. A fresh checkout therefore needs a configuration file containing the three supported settings rather than relying on a missing template.
+`.env.example` provides the three supported settings with placeholders; copy it to `.env` and run `scripts/configure.py`.
 
 ## Running and demonstrating the project
 
@@ -313,7 +330,7 @@ python -m http.server 5500 --bind 127.0.0.1
 
 Open `http://127.0.0.1:5500/pages/index.html`. Keep the server terminal running. ES modules and JSON loading require HTTP rather than double-clicking an HTML file.
 
-For persistent features, configure `DATA_SOURCE=supabase` with only the NEW project's root HTTPS URL and publishable key, apply migrations 001 through 007 manually in order, and disable Confirm email before testing signup. Do not rerun earlier successful migrations indiscriminately. No migration is automatically applied by the website.
+For persistent features, configure `DATA_SOURCE=supabase` with only the NEW project's root HTTPS URL and publishable key, apply migrations 001 through 008 manually in order, and disable Confirm email before testing signup. Do not rerun earlier successful migrations indiscriminately. No migration is automatically applied by the website.
 
 For local demonstration browsing, use `DATA_SOURCE=demo` and regenerate configuration. Demo mode reads fictional JSON and supports browsing and price previews; it does not fake successful authentication, reservations, payments, reviews, or earnings.
 
@@ -330,10 +347,10 @@ For explaining Web Technologies concepts, show `pages/dashboard.html` for forms,
 
 ## Testing status and practical limits
 
-The latest completed implementation checks passed 20 JavaScript tests, syntax checks, local HTML reference/ID checks, and disposable PostgreSQL checks across all seven migrations. Database checks covered stored-price earnings, owner isolation, review eligibility/privacy, coordinate constraints, booking/payment/cancellation behavior, weekly schedule boundaries, overnight gaps, and inclusive pricing. An isolated browser fixture also verified editor save/reopen behavior for amenities, photo removal, and schedule mode/day selections.
+The latest completed implementation checks passed 31 JavaScript tests, syntax checks, and disposable PostgreSQL checks across all eight migrations, plus headless-browser checks of the new pages in demo mode and against a mocked Supabase API. The 008 database checks cover profile creation and RLS, listing-field constraints, block/booking conflicts and overlaps, block-aware quotes and bookings, the schedule guard, entry-instruction privacy, busy-interval reads and availability search. Database checks covered stored-price earnings, owner isolation, review eligibility/privacy, coordinate constraints, booking/payment/cancellation behavior, weekly schedule boundaries, overnight gaps, and inclusive pricing. An isolated browser fixture also verified editor save/reopen behavior for amenities, photo removal, and schedule mode/day selections.
 
 These checks do not establish that the NEW hosted Supabase project has been migrated or that its live configuration is correct. Hosted signup/session behavior, PostgREST integration, real Storage uploads, and two-account browser flows still need the manual checklist after setup. The local database runner uses auth/storage stubs rather than the hosted services. Earlier documentation test counts refer to earlier stages.
 
-Current limits include simulated money only, one spot per listing, one opening interval per open day, no real-time push synchronization, no owner approval workflow, no admin panel, no email notifications, no automatic orphan-image cleanup, and no embedded map or geocoding service. Refresh controls retrieve changes made in other sessions; time-category labels update locally. There is no production deployment included in this stage.
+Current limits include simulated money only, one spot per listing, one opening interval per open day, no real-time push synchronization, no owner approval workflow, no admin panel, no email notifications or email change, no automatic orphan-image cleanup, no vehicle-size filter in search, and no embedded map, geocoding or distance sorting. Refresh controls retrieve changes made in other sessions; time-category labels update locally. There is no production deployment included in this stage.
 
 The local static server can serve files from its root, so `.env` is not a suitable place for secret/service-role keys or passwords. Generated frontend configuration is visible to browsers. Only publishable configuration belongs in this project, and any eventual deployment must exclude local configuration/source files that should not be served.

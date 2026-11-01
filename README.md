@@ -1,6 +1,23 @@
 # ParkShare — parking discovery and Supabase reads
 
-## Current owner editor and pricing (migration 007)
+## Current addition (migration 008): profiles, blocked periods, entry instructions and availability search
+
+Apply `sql/008_profiles_blocks_entry_search.sql` manually after 001–007 in the NEW ParkShare project (see SUPABASE_SETUP.md). No remote SQL is run automatically.
+
+- **Accounts:** signup asks for name, phone, email and password. A database trigger copies name and phone into `public.profiles`; an invalid phone never blocks signup (it is stored empty). **Profile** (new nav link, `pages/profile.html`) lets a user update name and phone with REST `fetch()`; email is read-only. RLS limits each user to their own row.
+- **Listings:** optional nearby landmark and maximum vehicle length/height (metres). Landmarks are searchable and shown on cards and details.
+- **Private entry instructions:** owners add gate codes/bay numbers in the editor. They are stored in a separate table, never in the public listing row, and are released only to the driver (or owner) of a confirmed booking that has not ended — on the booking details page and in My bookings.
+- **Blocked periods:** on a space's management page (dashboard card → *Block times*) owners block dates/times when they need the space. A block cannot overlap a confirmed booking or another block. Quotes and bookings treat blocked times as unavailable (`SPACE_BLOCKED`). Block notes stay private.
+- **Schedule protection:** changing opening hours is rejected (`SCHEDULE_CONFLICTS_BOOKING`) if a confirmed, not-yet-ended booking would fall outside the new hours.
+- **Availability:** the space page lists the next 7 days in IST — free ranges, booked times and owner-blocked times (no identities or reasons). Demo mode shows opening hours only and says so.
+- **Search:** filter by arrival/departure (IST) to see only spaces open and free for the whole period (database check in Supabase mode; opening hours only in demo mode). *Clear all filters* resets everything except the location. The chosen period carries into the booking form.
+- **Booking:** *Book now* shows a confirmation summary before anything is sent.
+- **Owner dashboard:** figures for listings (published/draft) and bookings (total, upcoming, completed, cancelled).
+- Not implemented by design: embedded maps and distance sorting (no geocoding/geolocation; see AGENTS.md).
+
+Checks: `node --test tests/*.test.mjs` (31 tests) and `python tests/run_sql_checks.py --pg-bin <PostgreSQL bin>` (all eight migrations, including profile RLS, block conflicts/overlaps, schedule guard, entry-instruction privacy, busy-slot reads and availability search).
+
+## Previous addition (007): owner editor and pricing
 
 Apply `sql/007_listing_hours_inclusive_pricing.sql` manually after 001–006 in the NEW ParkShare project before using these changes. Restart/reload the local site at `/pages/index.html`. No remote SQL was run.
 

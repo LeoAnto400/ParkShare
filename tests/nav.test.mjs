@@ -16,12 +16,12 @@ async function setup(readSession) {
   const window={location:{href:'http://localhost/pages/search.html',pathname:'/pages/search.html',assign(value){this.destination=value;}}};
   const run=new (Object.getPrototypeOf(async function(){}).constructor)('getClient','isDemo','session','element','document','window',source);
   await run(async()=>client,false,readSession,node,{querySelector:()=>header,createTextNode:text=>node('text','',text)},window);
-  return {header,account:header.children[1].children[3],event:(value)=>callback('CHANGE',value),window,isSignedOut:()=>signedOut};
+  return {header,account:header.children[1].children[4],event:(value)=>callback('CHANGE',value),window,isSignedOut:()=>signedOut};
 }
 test('shared navigation replaces stale headers and displays only Logout for restored sessions',async()=>{
  const ui=await setup(async()=>({user:{id:'driver'}}));
  assert.equal(ui.header.children.length,2);
- assert.deepEqual(ui.header.children[1].children.slice(0,3).map(n=>n.textContent),['Find parking','My spaces','My bookings']);
+ assert.deepEqual(ui.header.children[1].children.slice(0,4).map(n=>n.textContent),['Find parking','My spaces','My bookings','Profile']);
  assert.equal(ui.header.children[0].children[0].className,'brand-mark');
  assert.equal(ui.account.children.length,1);assert.equal(ui.account.children[0].textContent,'Logout');
  ui.event(null);assert.equal(ui.account.children[0].textContent,'Log in');

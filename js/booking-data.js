@@ -21,8 +21,19 @@ const messages = {
   PAYMENT_NOT_ALLOWED: 'Demo payment is not allowed for cancelled or ended reservations.',
   INVALID_PAYMENT_REQUEST: 'Choose one of the two demo payment actions.',
   PAYMENT_KEY_MISMATCH: 'This payment retry key belongs to a different request. Retry the original action.',
-  CANCELLATION_NOT_ALLOWED: 'Only confirmed reservations that have not started can be cancelled.'
+  CANCELLATION_NOT_ALLOWED: 'Only confirmed reservations that have not started can be cancelled.',
+  SPACE_BLOCKED: 'The owner has blocked part of those times. Please choose different times.',
+  BLOCK_CONFLICTS_BOOKING: 'That period overlaps a confirmed booking. Block a different period; existing bookings are never cancelled by a block.',
+  BLOCK_OVERLAP: 'That period overlaps one of your existing blocks. Remove or adjust the existing block first.',
+  INVALID_BLOCK: 'Choose an end time after the start time, in the future, within one year, and a reason of at most 200 characters.',
+  SPACE_FORBIDDEN: 'Space not found or you do not own it.',
+  SCHEDULE_CONFLICTS_BOOKING: 'These opening hours would leave a confirmed booking outside the new hours. Keep the booked times open, or ask the driver to cancel first.',
+  INVALID_RANGE: 'Availability can be shown for at most 31 days at a time.',
+  INVALID_ENTRY_INSTRUCTIONS: 'Entry instructions can be at most 1000 characters.',
+  INVALID_REQUEST: 'Too many bookings requested at once. Refresh to retry.'
 };
+// Exposed so other AJAX helpers (owner REST writes) can show the same friendly text.
+export const messageFor = code => messages[code];
 export async function request(path, body, authenticated = false) {
   if (isDemo) throw new Error('Persistent reservations require Supabase mode. Demo mode provides price previews only.');
   const headers = { apikey: SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' };
@@ -38,7 +49,7 @@ export async function request(path, body, authenticated = false) {
   try { data = await response.json(); } catch { throw new Error('Unexpected response. Retry the same reservation attempt if confirmation was interrupted.'); }
   if (!response.ok) {
     const code = Object.keys(messages).find(key => data?.message === key);
-    const error = new Error(messages[code] || `Data request failed (HTTP ${response.status}). Check your session and migrations 004–007; retry the same attempt if its outcome is unknown.`);
+    const error = new Error(messages[code] || `Data request failed (HTTP ${response.status}). Check your session and migrations 004–008; retry the same attempt if its outcome is unknown.`);
     error.code = code || String(response.status);
     throw error;
   }
@@ -60,4 +71,25 @@ export async function getBooking(id) {
   const rows = await request(`bookings?${new URLSearchParams({ id: `eq.${id}`, select: '*' })}`, null, true);
   if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Reservation not found or you do not have permission to view it.');
   return rows[0];
+}
+
+// Busy time ranges for a published space, as millisecond timestamps. No identities or reasons.
+export async function busyIntervals(spaceId, fromISO, toISO) {
+  const rows = await request('rpc/space_busy_intervals', { p_space_id: spaceId, p_from: fromISO, p_to: toISO });
+  if (!Array.isArray(rows) || rows.some(r => !['booked', 'blocked'].includes(r?.kind))) throw new Error('Invalid availability response.');
+  return rows.map(r => ({ start: Date.parse(r.start), end: Date.parse(r.end), kind: r.kind }));
+}
+// Search filter: IDs of published spaces that can take the whole period.
+export async function availableSpaceIds(arrivalISO, departureISO) {
+  const ids = await request('rpc/available_space_ids', { p_arrival: arrivalISO, p_departure: departureISO });
+  if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string')) throw new Error('Invalid availability response.');
+  return new Set(ids);
+}
+// Private entry instructions for the signed-in driver's (or owner's) confirmed bookings, in one request.
+export async function entryInstructions(bookingIds) {
+  const ids = [...new Set(bookingIds)].slice(0, 100);
+  if (!ids.length) return new Map();
+  const rows = await request('rpc/booking_entry_instructions', { p_booking_ids: ids }, true);
+  if (!Array.isArray(rows)) throw new Error('Invalid entry instructions response.');
+  return new Map(rows.map(row => [row.booking_id, row.instructions]));
 }

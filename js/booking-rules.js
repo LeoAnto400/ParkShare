@@ -34,7 +34,7 @@ export const indianDisplay = value => new Intl.DateTimeFormat('en-IN', {
 export function authDestination(search) {
   const value = new URLSearchParams(search).get('returnTo');
   if (!value) return 'dashboard.html';
-  if (['my-bookings.html', 'dashboard.html'].includes(value)) return value;
+  if (['my-bookings.html', 'dashboard.html', 'profile.html'].includes(value)) return value;
   const match = value.match(/^(space|owner-space|confirmation|checkout|review)\.html\?([^#]+)$/);
   if (!match) return 'dashboard.html';
   const params = new URLSearchParams(match[2]);

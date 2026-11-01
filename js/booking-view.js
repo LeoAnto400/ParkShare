@@ -30,3 +30,17 @@ export function historyView(events) {
   section.append(list, element('p', 'muted', 'Demo payment — no real money is collected. Refund entries are simulations only.'));
   return section;
 }
+
+// Private entry instructions block. `text` undefined = not loaded, '' = none provided.
+export function entryInstructionsView(booking, text, failed = false) {
+  const section = element('section', 'entry-instructions');
+  section.append(element('h3', '', 'Entry instructions'));
+  let message;
+  if (booking.status !== 'confirmed') message = 'Not available for cancelled reservations.';
+  else if (Date.parse(booking.departure) <= Date.now()) message = 'This reservation has ended.';
+  else if (failed) message = 'Entry instructions could not be loaded. Refresh to retry.';
+  else if (text) { section.append(element('p', '', text)); return section; }
+  else message = 'The owner has not added entry instructions. Use the directions link and the parking rules on the listing.';
+  section.append(element('p', 'muted', message));
+  return section;
+}

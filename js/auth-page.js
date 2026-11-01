@@ -1,5 +1,6 @@
 import { getClient, isDemo, session } from './auth.js';
 import { authDestination } from './booking-rules.js';
+import { normalizePhone } from './profile-rules.js';
 
 const form = document.querySelector('#auth-form');
 const status = document.querySelector('#auth-status');
@@ -30,6 +31,11 @@ form.addEventListener('submit', async event => {
     return;
   }
   if (signup && !values.get('name').trim()) { status.textContent = 'Enter your name.'; return; }
+  let phone;
+  if (signup) {
+    try { phone = normalizePhone(values.get('phone')); }
+    catch (error) { status.textContent = error.message; form.elements.phone?.focus(); return; }
+  }
   busy = true;
   submit.disabled = true;
   status.textContent = signup ? 'Creating your account…' : 'Signing in…';
@@ -37,7 +43,7 @@ form.addEventListener('submit', async event => {
     const client = await getClient();
     const credentials = { email: values.get('email').trim(), password };
     const result = signup
-      ? await client.auth.signUp({ ...credentials, options: { data: { name: values.get('name').trim() } } })
+      ? await client.auth.signUp({ ...credentials, options: { data: { name: values.get('name').trim(), phone } } })
       : await client.auth.signInWithPassword(credentials);
     if (result.error) throw result.error;
     // Supabase must issue a real session; disabling Confirm email is a dashboard setting.

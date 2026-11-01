@@ -1,7 +1,8 @@
 import { protectPage } from './protected-page.js';
 import { loadMyBookings, loadOwnerReservations, cancelBooking } from './management-data.js';
+import { entryInstructions } from './booking-data.js';
 import { bookingCategory, canCancel, canPay } from './booking-state.js';
-import { bookingDetails } from './booking-view.js';
+import { bookingDetails, entryInstructionsView } from './booking-view.js';
 import { element } from './ui.js';
 import { eligibleReview } from './reviews.js';
 
@@ -16,6 +17,8 @@ const listingFilter = root.querySelector('[data-listing]');
 const refresh = root.querySelector('[data-refresh]');
 const controls = root.querySelector('[data-controls]');
 let bookings = [], busy = false;
+// Drivers: private entry instructions for confirmed, not-yet-ended bookings (one batched request).
+let instructions = new Map(), instructionsFailed = false;
 function draw() {
   const category = filter.value;
   const selected = listingFilter?.value || '';
@@ -30,6 +33,8 @@ function draw() {
   for (const booking of visible) {
     const card = element('article', 'reservation-card');
     card.append(element('h3', '', booking.space_title), element('span', 'status-badge', bookingCategory(booking)), bookingDetails(booking));
+    if (!owner && booking.status === 'confirmed' && Date.parse(booking.departure) > Date.now())
+      card.append(entryInstructionsView(booking, instructions.get(booking.id) ?? '', instructionsFailed));
     const actions = element('div', 'owner-actions');
     const details = element('a', 'button secondary', 'View booking details');
     details.href = `confirmation.html?${new URLSearchParams({ booking: booking.id })}`;
@@ -74,6 +79,11 @@ async function load(message = '') {
   try {
     bookings = await (owner ? loadOwnerReservations() : loadMyBookings());
     if (scoped) bookings = bookings.filter(booking => booking.parking_space_id === spaceId);
+    if (!owner) {
+      const live = bookings.filter(b => b.status === 'confirmed' && Date.parse(b.departure) > Date.now()).map(b => b.id);
+      try { instructions = await entryInstructions(live); instructionsFailed = false; }
+      catch { instructions = new Map(); instructionsFailed = true; } // Never hide bookings because of this.
+    }
     if (listingFilter) {
       const previous = listingFilter.value;
       listingFilter.replaceChildren(new Option('All spaces with reservations', ''));

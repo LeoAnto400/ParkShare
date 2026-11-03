@@ -22,11 +22,11 @@ function draw() {
   const description = {
     unpaid: 'This reservation is confirmed and unpaid. The spot stays reserved until you cancel it.',
     demo_failed: 'The simulated payment failed. Your reservation is still confirmed and the spot stays reserved until you cancel. Retry when ready.',
-    demo_paid: 'Demo payment successful. This is a simulated receipt, not a verified real payment.',
-    demo_refunded: 'Demo refund recorded. The reservation is cancelled. No real refund occurs.'
+    demo_paid: 'Payment recorded. This is a simulated receipt; no real money was collected.',
+    demo_refunded: 'Refund recorded. The reservation is cancelled. No real refund occurs.'
   };
   const note = element('p', 'status', description[booking.payment_status] || 'Payment state unavailable. Run migration 005.');
-  if (booking.status === 'cancelled' && booking.payment_status !== 'demo_refunded') note.textContent = 'Reservation cancelled. Earlier unpaid/failed payment history is preserved. No demo payment can be made.';
+  if (booking.status === 'cancelled' && booking.payment_status !== 'demo_refunded') note.textContent = 'Reservation cancelled. Earlier unpaid/failed payment history is preserved. Payment is unavailable.';
   content.append(note);
   if (booking.payment_status === 'demo_paid') content.append(element('p', '', `Simulated receipt total: ${money(booking.total)}. No real money was collected.`));
   actions.hidden = booking.driver_id !== current.user.id;
@@ -36,13 +36,13 @@ function draw() {
   retry.disabled = busy;
   refresh.disabled = busy;
   if (!canPay(booking) && !['demo_paid','demo_refunded'].includes(booking.payment_status)) {
-    content.append(element('p', 'muted', 'Demo payment is available only for confirmed reservations that have not ended.'));
+    content.append(element('p', 'muted', 'Payment is available only for confirmed reservations that have not ended.'));
   }
 }
 async function load() {
   busy = true; refresh.disabled = true;
   success.disabled = true; failure.disabled = true; retry.disabled = true;
-  status.textContent = 'Loading stored reservation and demo payment history…';
+  status.textContent = 'Loading stored reservation and payment history…';
   try {
     booking = await getBooking(id);
     if (booking.driver_id !== current.user.id) throw new Error('Only the booking’s driver can use checkout. Owners can view reservation details from their dashboard.');
@@ -63,10 +63,10 @@ async function send() {
     sessionStorage.removeItem(storageKey); pending = null;
     status.textContent = booking.payment_status === 'demo_paid'
       ? result.event?.outcome === 'demo_paid'
-        ? `Demo payment successful. Receipt ${result.event.id}. No real money is collected.`
-        : 'This reservation now has a successful demo payment. See payment history for its receipt. No real money is collected.'
+        ? `Payment recorded. Receipt ${result.event.id}. No real money is collected.`
+        : 'Payment is recorded. See payment history for its receipt. No real money is collected.'
       : booking.payment_status === 'demo_refunded'
-        ? 'This reservation has been cancelled and demo-refunded. No real refund occurs.'
+        ? 'This reservation has been cancelled and refunded in the simulation. No real refund occurs.'
         : booking.status === 'cancelled' ? 'This reservation is cancelled. Its simulation history is preserved.'
           : 'Simulated payment failed. The reservation remains confirmed and the slot stays reserved. You can retry or cancel before arrival.';
     try { history.replaceChildren(historyView(await paymentHistory(id))); }

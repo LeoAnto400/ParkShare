@@ -1,7 +1,7 @@
 import { scheduleView } from './schedule.js';
 import { loadSpace } from './data.js';
 import { element, parkingImage } from './ui.js';
-import { setupBooking } from './booking.js';
+import { setupBooking } from './booking.js?v=booking-invoice-2';
 import { locationActions } from './location.js';
 import { showReviews } from './reviews.js';
 import { availabilityView, istDate, dayStart } from './availability.js';

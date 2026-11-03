@@ -58,7 +58,7 @@ export function cardEarningsView(report, spaceId, account = false) {
     item.append(element('dt', '', label), element('dd', '', money(value / 100)));
     list.append(item);
   }
-  section.append(list, element('p', 'muted', `Completed demo-paid owner amounts. Arrival dates in Asia/Kolkata; today is ${report.day}. Refresh listings for updates.`),
-    element('p', 'muted', 'Demo payment — no real money is collected.'));
+  section.append(list, element('p', 'muted', `Completed simulated owner amounts. Arrival dates in Asia/Kolkata; today is ${report.day}. Refresh listings for updates.`),
+    element('p', 'muted', 'No real money is collected.'));
   return section;
 }

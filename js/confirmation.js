@@ -2,7 +2,6 @@ import { protectPage } from './protected-page.js';
 import { getBooking, entryInstructions } from './booking-data.js';
 import { paymentHistory } from './management-data.js';
 import { bookingDetails, historyView, entryInstructionsView } from './booking-view.js';
-import { canPay } from './booking-state.js';
 import { element } from './ui.js';
 
 const status = document.querySelector('#confirmation-status');
@@ -25,14 +24,10 @@ async function load() {
     if (booking.status === 'confirmed' && Date.parse(booking.departure) > Date.now()) {
       try { text = (await entryInstructions([booking.id])).get(booking.id) || ''; } catch { failed = true; }
     }
-    content.append(entryInstructionsView(booking, text, failed), element('p', 'demo-disclaimer', 'Demo payment — no real money is collected.'));
+    content.append(entryInstructionsView(booking, text, failed), element('p', 'demo-disclaimer', 'No real money is collected.'));
     const links = element('div', 'owner-actions');
     if (booking.driver_id === current.user.id) {
       const my = element('a', 'button secondary', 'My bookings'); my.href = 'my-bookings.html'; links.append(my);
-      if (canPay(booking) || ['demo_paid', 'demo_refunded'].includes(booking.payment_status)) {
-        const checkout = element('a', 'button', canPay(booking) ? 'Complete / retry demo payment' : 'View simulated receipt');
-        checkout.href = `checkout.html?${new URLSearchParams({ booking: id })}`; links.append(checkout);
-      }
     } else {
       const owner = element('a', 'button secondary', 'Back to owner reservations'); owner.href = `owner-space.html?${new URLSearchParams({ id: booking.parking_space_id })}#reservations-section`; links.append(owner);
     }

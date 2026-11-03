@@ -1,5 +1,6 @@
 import { isDemo, session } from './auth.js';
 import { getQuote, reserve } from './booking-data.js';
+import { simulatePayment } from './management-data.js';
 import { indianTimeToUTC, validateInterval, registrationNumber, previewPrice, money, indianDisplay } from './booking-rules.js';
 import { element } from './ui.js';
 
@@ -7,24 +8,40 @@ export function setupBooking(space) {
   const form = document.querySelector('#booking-form');
   const status = document.querySelector('#booking-status');
   const breakdown = document.querySelector('#booking-breakdown');
-  const confirm = document.querySelector('#confirm-reservation');
-  const retry = document.querySelector('#retry-reservation');
+  const book = document.querySelector('#confirm-reservation');
   const check = document.querySelector('#check-availability');
+  const invoice = document.querySelector('#invoice-panel');
+  const invoiceDetails = document.querySelector('#invoice-details');
+  const pay = document.querySelector('#complete-payment');
+  const cancel = document.querySelector('#cancel-booking');
+  const fields = form.querySelector('fieldset');
   const params = new URLSearchParams(window.location.search);
   const key = `parkshare-booking-attempt:${space.id}`;
-  let quote = null, busy = false, revision = 0, pending = null;
-  // Only a reservation request is stored, never a password or access token. SDK owns auth.
+  let quote = null, busy = false, revision = 0, pending = null, locked = false;
+  // Only the request needed for a safe retry is stored; passwords and tokens stay in the auth SDK.
   try { pending = JSON.parse(sessionStorage.getItem(key) || 'null'); } catch { pending = null; }
-  form.elements.arrival.value = params.get('arrival') || '';
-  form.elements.departure.value = params.get('departure') || '';
+  const inputTime = value => {
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) ? new Date(timestamp + 330 * 60000).toISOString().slice(0, 16) : '';
+  };
+  form.elements.arrival.value = params.get('arrival') || inputTime(pending?.request?.p_arrival);
+  form.elements.departure.value = params.get('departure') || inputTime(pending?.request?.p_departure);
   form.elements.vehicle.replaceChildren(...space.vehicles.map(type => {
     const option = element('option', '', type); option.value = type; return option;
   }));
-  if (space.vehicles.includes(params.get('vehicle'))) form.elements.vehicle.value = params.get('vehicle');
-  confirm.disabled = true;
-  retry.hidden = !pending;
-  if (pending) status.textContent = 'An earlier attempt may have completed. Retry it to recover its result before starting another reservation.';
-  else if (isDemo) status.textContent = 'Demo mode: price preview only. Availability checks and persistent reservations require Supabase mode.';
+  if (space.vehicles.includes(pending?.request?.p_vehicle_type)) form.elements.vehicle.value = pending.request.p_vehicle_type;
+  else if (space.vehicles.includes(params.get('vehicle'))) form.elements.vehicle.value = params.get('vehicle');
+  if (pending) {
+    // Older saved attempts may not yet have a payment key or invoice snapshot.
+    if (!pending.paymentKey) { pending.paymentKey = crypto.randomUUID(); pending.started = true; }
+    pending.quote ||= previewPrice(pending.request.p_expected_hourly_rate,
+      validateInterval(pending.request.p_arrival, pending.request.p_departure, 0));
+    locked = Boolean(pending.started);
+    try { sessionStorage.setItem(key, JSON.stringify(pending)); }
+    catch { status.textContent = 'Could not save the retry details. Keep this page open and retry here.'; }
+  }
+  if (book) book.disabled = true;
+  if (isDemo) status.textContent = 'Price previews are available. Reservations require the connected ParkShare service.';
 
   function inputData() {
     const arrival = indianTimeToUTC(form.elements.arrival.value);
@@ -41,84 +58,123 @@ export function setupBooking(space) {
       breakdown.append(element('p', '', `${name}: ${value}`));
     }
   }
+  function drawInvoice(attempt) {
+    const request = attempt.request, amount = attempt.quote;
+    invoiceDetails.replaceChildren(
+      element('h3', '', space.title),
+      element('p', '', `Arrival: ${indianDisplay(request.p_arrival)}`),
+      element('p', '', `Departure: ${indianDisplay(request.p_departure)}`),
+      element('p', '', `Vehicle: ${request.p_vehicle_type} · ${request.p_registration}`),
+      element('p', '', `Parking amount: ${money(amount.parking_subtotal)}`),
+      element('p', '', `Included platform fee: ${money(amount.service_fee)}`),
+      element('p', 'invoice-total', `Total due: ${money(amount.total)}`),
+      element('p', 'muted', 'This checkout records a simulated payment. No real money is collected.')
+    );
+    invoice.hidden = false;
+    if (pay) pay.disabled = busy;
+    if (cancel) cancel.disabled = busy || locked;
+  }
   function setBusy(value) {
     busy = value;
-    form.querySelector('fieldset').disabled = value;
-    retry.disabled = value;
-    confirm.disabled = value || !quote?.available || isDemo || !!pending;
+    if (fields) fields.disabled = value || Boolean(pending);
+    if (check) check.disabled = value || Boolean(pending);
+    if (book) book.disabled = value || !quote?.available || isDemo || Boolean(pending);
+    if (pay) pay.disabled = value;
+    if (cancel) cancel.disabled = value || locked;
   }
   function preview() {
-    ++revision; quote = null; confirm.disabled = true;
+    ++revision; quote = null; if (book) book.disabled = true;
+    if (pending) return;
     try {
       const data = inputData();
-      displayPrice(previewPrice(space.price, validateInterval(data.p_arrival,data.p_departure)), 'Estimated price');
-      status.textContent = pending ? 'Recover the previous attempt using Retry this reservation first.' : 'Check availability for an authoritative quote. A check does not hold the spot.';
+      displayPrice(previewPrice(space.hourly_price ?? space.price, validateInterval(data.p_arrival, data.p_departure)), 'Estimated price');
+      status.textContent = 'Check availability for a current quote. The check does not hold the spot.';
     } catch (error) { breakdown.replaceChildren(); status.textContent = error.message; }
   }
   form.addEventListener('input', preview);
   form.addEventListener('submit', event => event.preventDefault());
   check.addEventListener('click', async () => {
     if (busy || pending) return;
-    quote = null; confirm.disabled = true;
+    quote = null; if (book) book.disabled = true;
     try {
       const data = inputData();
-      if (isDemo) { displayPrice(previewPrice(space.price,validateInterval(data.p_arrival,data.p_departure)), 'Demo estimate'); status.textContent = 'Availability is not checked in demo mode. Switch to Supabase mode for reservations.'; return; }
+      if (isDemo) { displayPrice(previewPrice(space.hourly_price ?? space.price, validateInterval(data.p_arrival, data.p_departure)), 'Estimated price'); status.textContent = 'Availability checks require the connected ParkShare service.'; return; }
       const version = revision;
       setBusy(true); status.textContent = 'Checking availability and current price…';
       const result = await getQuote(data);
       if (version !== revision) return;
       quote = result;
-      displayPrice(result, 'Current database quote');
-      status.textContent = result.available ? 'Available now. Review this quote, then confirm. This check does not hold the spot. No payment will be collected.' : 'Unavailable for part of those times (already booked or blocked by the owner). Check the availability list and choose different times.';
+      displayPrice(result, 'Current quote');
+      status.textContent = result.available
+        ? 'Available now. Review the invoice before continuing. This check does not hold the spot.'
+        : 'Unavailable for part of those times. Choose different times.';
     } catch (error) { status.textContent = error.message; }
     finally { setBusy(false); }
   });
 
-  async function submitAttempt() {
+  async function complete() {
     if (!pending || busy) return;
-    setBusy(true); status.textContent = 'Confirming your reservation…';
+    pending.started = true; locked = true;
+    try { sessionStorage.setItem(key, JSON.stringify(pending)); }
+    catch { locked = false; pending.started = false; status.textContent = 'Could not save payment retry details. Keep this page open and retry here.'; return; }
+    setBusy(true); status.textContent = 'Creating your reservation and completing payment…';
     try {
       const current = await session();
-      if (!current || current.user.id !== pending.userId) throw new Error('Log in with the account that started this attempt to recover its result.');
+      if (!current || current.user.id !== pending.userId) throw new Error('Log in with the account that prepared this booking to continue.');
+      // Both calls use persistent request keys so an uncertain network retry cannot duplicate the booking or payment.
       const booking = await reserve(pending.request);
-      sessionStorage.removeItem(key); pending = null;
-      window.location.assign(`confirmation.html?${new URLSearchParams({ booking: booking.id })}`);
-    } catch (error) {
-      status.textContent = error.message;
-      // Only explicit database rejection proves no booking was created. Network/unknown errors retain key.
-      if (['PRICE_CHANGED','SLOT_TAKEN','INVALID_INTERVAL','UNSUPPORTED_VEHICLE','INVALID_REGISTRATION','SELF_BOOKING','SPACE_UNAVAILABLE','OUTSIDE_OPENING_HOURS','SPACE_BLOCKED'].includes(error.code)) {
-        sessionStorage.removeItem(key); pending = null; quote = null;
+      const result = await simulatePayment(booking.id, 'success', pending.paymentKey);
+      if (!result?.booking || result.booking.id !== booking.id || result.booking.driver_id !== current.user.id
+          || result.booking.payment_status !== 'demo_paid') {
+        throw new Error('Payment could not be confirmed. Use Complete payment to safely retry this same request.');
       }
-      retry.hidden = !pending;
-    } finally { setBusy(false); }
+      sessionStorage.removeItem(key); pending = null;
+      window.location.assign(`my-bookings.html?${new URLSearchParams({ booking: booking.id })}`);
+    } catch (error) {
+      status.textContent = `${error.message} Use Complete payment to retry this same request.`;
+      // Clear only errors that prove the reservation was rejected before creation.
+      if (['PRICE_CHANGED','SLOT_TAKEN','INVALID_INTERVAL','UNSUPPORTED_VEHICLE','INVALID_REGISTRATION','SELF_BOOKING','SPACE_UNAVAILABLE','OUTSIDE_OPENING_HOURS','SPACE_BLOCKED'].includes(error.code)) {
+        sessionStorage.removeItem(key); pending = null; locked = false; invoice.hidden = true; quote = null;
+      }
+    } finally { setBusy(false); if (pending) drawInvoice(pending); }
   }
-  retry.addEventListener('click', submitAttempt);
-  confirm.addEventListener('click', async () => {
+  book.addEventListener('click', async () => {
     if (busy || !quote?.available || pending || isDemo) return;
-    setBusy(true);
     try {
       const data = inputData();
       const registration = registrationNumber(form.elements.registration.value);
+      setBusy(true);
       const current = await session();
       if (!current) {
-        // Preserve non-sensitive selection in the URL; do not put a registration in browser history.
+        // Preserve only the selected space and times in the URL; registration stays out of browser history.
         const returnTo = `space.html?${new URLSearchParams({ id: space.id, arrival: form.elements.arrival.value,
           departure: form.elements.departure.value, vehicle: form.elements.vehicle.value })}`;
         window.location.assign(`login.html?${new URLSearchParams({ returnTo })}`);
         return;
       }
       if (space.ownerId === current.user.id) throw new Error('You cannot reserve your own parking space.');
-      // Explicit confirmation step: nothing is sent until the driver agrees to this summary.
-      const summary = `Book ${space.title}?\n\n${indianDisplay(data.p_arrival)}\nto ${indianDisplay(data.p_departure)}\n${data.p_vehicle_type} · ${registration}\nTotal ${money(quote.total)} (5% platform fee included)\n\nDemo payment — no real money is collected.`;
-      if (!window.confirm(summary)) { status.textContent = 'Booking not confirmed. Nothing was sent.'; return; }
       pending = { userId: current.user.id, request: { ...data, p_registration: registration,
-        p_expected_hourly_rate: quote.hourly_rate, p_idempotency_key: crypto.randomUUID() } };
-      try { sessionStorage.setItem(key, JSON.stringify(pending)); }
-      catch { pending = null; throw new Error('Enable session storage to safely recover reservation retries. No booking was sent.'); }
-      retry.hidden = false;
-    } catch (error) { status.textContent = error.message; }
+        p_expected_hourly_rate: quote.hourly_rate, p_idempotency_key: crypto.randomUUID() },
+        quote, paymentKey: crypto.randomUUID(), started: false };
+      sessionStorage.setItem(key, JSON.stringify(pending));
+      if (fields) fields.disabled = true;
+      drawInvoice(pending);
+      status.textContent = 'Review the reservation details and invoice. Nothing is reserved until you complete payment.';
+    } catch (error) { status.textContent = error.message || 'Enable session storage to safely continue. No reservation was created.'; pending = null; }
     finally { setBusy(false); }
-    if (pending) await submitAttempt();
   });
-  if (form.elements.arrival.value && form.elements.departure.value) preview();
+  pay.addEventListener('click', complete);
+  cancel.addEventListener('click', () => {
+    if (busy || locked) return;
+    sessionStorage.removeItem(key); pending = null; invoice.hidden = true;
+    if (fields) fields.disabled = false;
+    setBusy(false);
+    status.textContent = 'Booking cancelled. No reservation was created.';
+  });
+  if (pending) {
+    form.elements.registration.value = pending.request.p_registration || '';
+    if (fields) fields.disabled = true;
+    drawInvoice(pending);
+    status.textContent = 'Review the saved invoice and complete payment to continue this booking.';
+  } else if (form.elements.arrival.value && form.elements.departure.value) preview();
 }

@@ -2,7 +2,7 @@ import { isDemo, session, getClient } from './auth.js';
 
 export async function protectPage(destination, status, privateContent) {
   if (isDemo) {
-    status.textContent = 'Local demo mode supports browsing and price previews only. Bookings, demo payments, earnings and reviews require Supabase mode.';
+    status.textContent = 'Local preview mode supports browsing and price previews only. Booking, payment, earnings and reviews require the connected ParkShare service.';
     return null;
   }
   const current = await session();

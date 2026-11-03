@@ -5,6 +5,25 @@ export function element(tag, className, text) {
   return node;
 }
 
+// In-page replacement for window.confirm. Some embedded browsers suppress native dialogs, which then
+// silently read as "Cancel". A modal <dialog> keeps keyboard focus inside it, and Esc cancels.
+export function confirmDialog(message, confirmLabel = 'Confirm', cancelLabel = 'Cancel') {
+  return new Promise(resolve => {
+    const dialog = element('dialog', 'confirm-dialog');
+    const actions = element('div', 'owner-actions');
+    const cancel = element('button', 'secondary', cancelLabel); cancel.type = 'button';
+    const confirm = element('button', '', confirmLabel); confirm.type = 'button';
+    actions.append(cancel, confirm);
+    dialog.append(element('p', 'confirm-message', message), actions);
+    cancel.addEventListener('click', () => dialog.close('cancel'));
+    confirm.addEventListener('click', () => dialog.close('confirm'));
+    dialog.addEventListener('close', () => { dialog.remove(); resolve(dialog.returnValue === 'confirm'); }, { once: true });
+    document.body.append(dialog);
+    dialog.showModal();
+    cancel.focus(); // The safe choice is the default.
+  });
+}
+
 export function parkingImage(photo, title) {
   const image = element('img');
   image.alt = `${photo.alt} — ${title}`;
@@ -18,6 +37,9 @@ export function parkingImage(photo, title) {
   return image;
 }
 
+// Owners often type "Near the bus stand" themselves; avoid showing "Near Near …".
+export const nearLandmark = landmark => (/^near\b/i.test(landmark.trim()) ? landmark.trim() : `Near ${landmark.trim()}`);
+
 export function renderCards(container, spaces, search = '', carry = {}) {
   const fragment = document.createDocumentFragment();
   for (const space of spaces) {
@@ -25,9 +47,9 @@ export function renderCards(container, spaces, search = '', carry = {}) {
     const media = element('div', 'card-image');
     media.append(parkingImage(space.photos[0], space.title), element('span', 'image-label', space.ownerId ? 'Owner listing' : 'Fictional sample'));
     const body = element('div', 'card-body');
-    body.append(element('p', 'locality', `${space.locality} · ${space.city}${space.landmark ? ` · Near ${space.landmark}` : ''}`), element('h3', '', space.title), element('p', 'vehicles', space.vehicles.join(' / ')));
+    body.append(element('p', 'locality', `${space.locality} · ${space.city}${space.landmark ? ` · ${nearLandmark(space.landmark)}` : ''}`), element('h3', '', space.title), element('p', 'vehicles', space.vehicles.join(' / ')));
     body.append(element('p', 'rating-summary', space.ratingsUnavailable ? 'Ratings unavailable — refresh to retry'
-      : space.rating?.review_count > 0 ? `${Number(space.rating.average_rating).toFixed(1)} / 5 · ${space.rating.review_count} reviews` : 'No reviews yet'));
+      : space.rating?.review_count > 0 ? `${Number(space.rating.average_rating).toFixed(1)} / 5 · ${space.rating.review_count} ${space.rating.review_count === 1 ? 'review' : 'reviews'}` : 'No reviews yet'));
     const chips = element('div', 'chips');
     for (const amenity of space.amenities) chips.append(element('span', 'chip', amenity));
     const bottom = element('div', 'card-bottom');

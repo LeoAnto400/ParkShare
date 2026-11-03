@@ -3,7 +3,7 @@ import { loadMyBookings, loadOwnerReservations, cancelBooking } from './manageme
 import { entryInstructions } from './booking-data.js';
 import { bookingCategory, canCancel, canPay } from './booking-state.js';
 import { bookingDetails, entryInstructionsView } from './booking-view.js';
-import { element } from './ui.js';
+import { element, confirmDialog } from './ui.js';
 import { eligibleReview } from './reviews.js';
 
 const root = document.querySelector('#reservations-section');
@@ -53,8 +53,8 @@ function draw() {
       const cancel = element('button', 'secondary', 'Cancel reservation');
       cancel.type = 'button'; cancel.disabled = busy;
       cancel.addEventListener('click', async () => {
-        // Browser confirmation provides keyboard access and focus management.
-        if (busy || !window.confirm(`Cancel reservation ${booking.id}? The spot will be released. Any demo-paid amount is marked demo-refunded; no real refund occurs.`)) return;
+        // The modal dialog provides keyboard access and focus management.
+        if (busy || !await confirmDialog(`Cancel reservation ${booking.id}? The spot will be released. Any demo-paid amount is marked demo-refunded; no real refund occurs.`, 'Cancel reservation', 'Keep reservation')) return;
         setBusy(true);
         status.textContent = 'Cancelling reservation…';
         try {

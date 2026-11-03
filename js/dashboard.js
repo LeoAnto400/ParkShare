@@ -4,7 +4,7 @@ import { loadOwnerReservations } from './management-data.js';
 import { summarizeOwnerBookings, renderBookingSummary } from './owner-booking-summary.js';
 import { previewPrice, money } from './booking-rules.js';
 import { isDemo, getClient, session } from './auth.js';
-import { element } from './ui.js';
+import { element, confirmDialog } from './ui.js';
 import { bookingCategory } from './booking-state.js';
 import { loadEntryInstructions, saveEntryInstructions, validateEntryInstructions } from './owner-extras.js';
 import { loadOwnedSpaces, createOwnedSpace, updateOwnedSpace, deleteOwnedSpace, uploadPhoto, validateListing, validatePhoto } from './owner-data.js';
@@ -78,8 +78,8 @@ function render() {
     const publish = element('button', 'secondary', row.published ? 'Unpublish' : 'Publish');
     publish.addEventListener('click', () => mutate(() => updateOwnedSpace(row.id, { published: !row.published }), row.published ? 'Space unpublished.' : 'Space published. Refresh search to see it.'));
     const remove = element('button', 'secondary', 'Delete');
-    remove.addEventListener('click', () => {
-      if (window.confirm(`Delete “${row.title}”? Listings with booking history cannot be deleted; unpublish them instead. Otherwise deletion is permanent. Uploaded photos are retained for manual cleanup.`)) {
+    remove.addEventListener('click', async () => {
+      if (await confirmDialog(`Delete “${row.title}”? Listings with booking history cannot be deleted; unpublish them instead. Otherwise deletion is permanent. Uploaded photos are retained for manual cleanup.`, 'Delete listing', 'Keep listing')) {
         mutate(() => deleteOwnedSpace(row.id), 'Listing deleted.');
       }
     });

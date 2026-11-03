@@ -1,7 +1,7 @@
 import { isDemo, session } from './auth.js';
 import { getQuote, reserve } from './booking-data.js';
 import { indianTimeToUTC, validateInterval, registrationNumber, previewPrice, money, indianDisplay } from './booking-rules.js';
-import { element } from './ui.js';
+import { element, confirmDialog } from './ui.js';
 
 export function setupBooking(space) {
   const form = document.querySelector('#booking-form');
@@ -110,7 +110,7 @@ export function setupBooking(space) {
       if (space.ownerId === current.user.id) throw new Error('You cannot reserve your own parking space.');
       // Explicit confirmation step: nothing is sent until the driver agrees to this summary.
       const summary = `Book ${space.title}?\n\n${indianDisplay(data.p_arrival)}\nto ${indianDisplay(data.p_departure)}\n${data.p_vehicle_type} · ${registration}\nTotal ${money(quote.total)} (5% platform fee included)\n\nDemo payment — no real money is collected.`;
-      if (!window.confirm(summary)) { status.textContent = 'Booking not confirmed. Nothing was sent.'; return; }
+      if (!await confirmDialog(summary, 'Book now', 'Go back')) { status.textContent = 'Booking not confirmed. Nothing was sent.'; return; }
       pending = { userId: current.user.id, request: { ...data, p_registration: registration,
         p_expected_hourly_rate: quote.hourly_rate, p_idempotency_key: crypto.randomUUID() } };
       try { sessionStorage.setItem(key, JSON.stringify(pending)); }

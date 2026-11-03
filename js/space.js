@@ -1,6 +1,6 @@
 import { scheduleView } from './schedule.js';
 import { loadSpace } from './data.js';
-import { element, parkingImage } from './ui.js';
+import { element, parkingImage, nearLandmark } from './ui.js';
 import { setupBooking } from './booking.js';
 import { locationActions } from './location.js';
 import { showReviews } from './reviews.js';
@@ -32,7 +32,7 @@ async function load() {
     for (const field of ['title', 'address', 'description']) document.querySelector(`#${field}`).textContent = space[field];
     document.querySelector('#locality').textContent = `${space.locality} · ${space.city}`;
     const landmark = document.querySelector('#landmark');
-    landmark.textContent = space.landmark ? `Near ${space.landmark}` : ''; landmark.hidden = !space.landmark;
+    landmark.textContent = space.landmark ? nearLandmark(space.landmark) : ''; landmark.hidden = !space.landmark;
     const limits = [];
     if (space.maxLength != null) limits.push(`Max length ${space.maxLength} m`);
     if (space.maxHeight != null) limits.push(`Max height ${space.maxHeight} m`);

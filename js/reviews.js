@@ -11,7 +11,7 @@ export function validateReview(rating, comment) {
     throw new Error('Choose an integer rating from 1 to 5 and write 10–1000 characters after trimming.');
 }
 export const ratingLabel = summary => summary?.review_count > 0
-  ? `${Number(summary.average_rating).toFixed(1)} / 5 · ${summary.review_count} reviews` : 'No reviews yet';
+  ? `${Number(summary.average_rating).toFixed(1)} / 5 · ${summary.review_count} ${summary.review_count === 1 ? 'review' : 'reviews'}` : 'No reviews yet';
 
 export async function showReviews(space, root) {
   root.replaceChildren(element('h2', '', 'Verified booking reviews'));
@@ -45,7 +45,7 @@ export async function showReviews(space, root) {
       }
       offset += rows.length; more.hidden = rows.length < 20;
       status.textContent = !summaries.length ? 'This space is not publicly viewable. Reviews remain stored but are hidden from public reads.'
-        : offset ? `${offset} reviews shown. Reviewers are publicly anonymous.` : 'No reviews yet.';
+        : offset ? `${offset} ${offset === 1 ? 'review' : 'reviews'} shown. Reviewers are publicly anonymous.` : 'No reviews yet.';
     } catch (error) { status.textContent = `${error.message} Use Refresh reviews to retry.`; }
     finally { busy = false; refresh.disabled = more.disabled = false; }
   }

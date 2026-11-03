@@ -12,13 +12,6 @@ if (destination !== 'dashboard.html') {
   const other = document.querySelector(signup ? 'a[href="login.html"]' : 'a[href="signup.html"]');
   if (other) other.href = `${signup ? 'login' : 'signup'}.html?${new URLSearchParams({ returnTo: destination })}`;
 }
-if (isDemo) {
-  form.hidden = true;
-  status.textContent = 'You are browsing local demo data. Authentication and owner writes require Supabase mode. Follow SUPABASE_SETUP.md to configure the new ParkShare project.';
-} else {
-  try { if (await session()) window.location.replace(destination); }
-  catch (error) { status.textContent = error.message; }
-}
 let busy = false;
 form.addEventListener('submit', async event => {
   event.preventDefault();
@@ -57,3 +50,13 @@ form.addEventListener('submit', async event => {
     status.textContent = error.message || 'Authentication failed. Please try again.';
   } finally { busy = false; submit.disabled = false; }
 });
+// The button ships disabled so an early Enter/click can't fall back to a native form submit.
+// Enable it only now that the handler above is attached, before the slower session check.
+submit.disabled = false;
+if (isDemo) {
+  form.hidden = true;
+  status.textContent = 'You are browsing local demo data. Authentication and owner writes require Supabase mode. Follow SUPABASE_SETUP.md to configure the new ParkShare project.';
+} else {
+  try { if (await session()) window.location.replace(destination); }
+  catch (error) { status.textContent = error.message; }
+}

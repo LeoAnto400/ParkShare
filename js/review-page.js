@@ -1,4 +1,5 @@
 import { protectPage } from './protected-page.js';
+import { confirmDialog } from './ui.js';
 import { getBooking, request } from './booking-data.js';
 import { eligibleReview, validateReview, showReviews } from './reviews.js';
 
@@ -36,7 +37,7 @@ try {
       finally { setBusy(false); }
     });
     remove.addEventListener('click', async () => {
-      if (busy || !confirm('Delete your review? You can write another review for this booking later.')) return;
+      if (busy || !await confirmDialog('Delete your review? You can write another review for this booking later.', 'Delete review', 'Keep review')) return;
       setBusy(true); status.textContent = 'Deleting review…';
       try {
         await request('rpc/delete_booking_review', { p_booking_id: id }, true); await reload();

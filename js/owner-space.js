@@ -1,6 +1,6 @@
 import { protectPage } from './protected-page.js';
 import { loadOwnedSpaces } from './owner-data.js';
-import { element, parkingImage } from './ui.js';
+import { element, parkingImage, confirmDialog } from './ui.js';
 import { scheduleView } from './schedule.js';
 import { locationActions } from './location.js';
 import { showReviews } from './reviews.js';
@@ -34,7 +34,7 @@ async function drawBlocks(message = '') {
       const remove = element('button', 'secondary', 'Remove block');
       remove.type = 'button';
       remove.addEventListener('click', async () => {
-        if (blockBusy || !window.confirm('Remove this block? Drivers will be able to book these times again.')) return;
+        if (blockBusy || !await confirmDialog('Remove this block? Drivers will be able to book these times again.', 'Remove block', 'Keep block')) return;
         setBlockBusy(true);
         try { await deleteBlock(block.id); await drawBlocks('Block removed. Those times are bookable again.'); }
         catch (error) { blockStatus.textContent = error.message; }

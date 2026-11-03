@@ -10,6 +10,6 @@ export const canCancel = (booking, now = Date.now()) => bookingCategory(booking,
 export const canPay = (booking, now = Date.now()) => booking.status === 'confirmed'
   && Date.parse(booking.departure) > now && ['unpaid', 'demo_failed'].includes(booking.payment_status);
 export const paymentLabels = {
-  unpaid: 'Unpaid (demo)', demo_failed: 'Demo payment failed',
-  demo_paid: 'Demo payment successful — simulated', demo_refunded: 'Demo refunded — no real refund'
+  unpaid: 'Unpaid', demo_failed: 'Payment failed',
+  demo_paid: 'Paid — simulated; no real money collected', demo_refunded: 'Refunded — no real refund'
 };

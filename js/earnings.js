@@ -17,7 +17,7 @@ let offset = 0, busy = false, filters = { p_space_id: scoped ? spaceId : null };
 async function load(newOffset) {
   if (busy) return;
   busy = true; form.querySelector('fieldset').disabled = true; previous.disabled = next.disabled = true;
-  status.textContent = 'Loading demo earnings…';
+  status.textContent = 'Loading earnings…';
   // Clear previous figures so a failed request cannot display stale totals under new filters.
   totals.replaceChildren(); table.replaceChildren();
   try {
@@ -27,7 +27,7 @@ async function load(newOffset) {
     const metrics = [
       ['Completed owner earnings', t.completed_owner], ['Completed platform fees', t.completed_platform],
       ['Owner amount pending completion', t.pending_owner], ['Platform fees pending completion', t.pending_platform],
-      ['Demo refunded driver total (excluded)', t.refunded_total], ['Refunded owner amount (excluded)', t.refunded_owner],
+      ['Refunded driver total (excluded)', t.refunded_total], ['Refunded owner amount (excluded)', t.refunded_owner],
       ['Refunded platform fees (excluded)', t.refunded_platform], [`Other excluded driver totals (${t.excluded_count} unpaid/failed or other ineligible bookings)`, t.excluded_total]
     ];
     for (const [label, value] of metrics) {

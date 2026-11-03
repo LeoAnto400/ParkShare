@@ -24,10 +24,12 @@ function draw() {
   const selected = listingFilter?.value || '';
   const forListing = bookings.filter(b => !selected || b.parking_space_id === selected);
   for (const option of filter.options) {
-    const count = forListing.filter(b => option.value === 'all' || bookingCategory(b) === option.value).length;
+    const count = forListing.filter(b => option.value === 'all' || (option.value === 'current-upcoming'
+      ? ['active', 'upcoming'].includes(bookingCategory(b)) : bookingCategory(b) === option.value)).length;
     option.textContent = `${option.dataset.label} (${count})`;
   }
-  const visible = forListing.filter(b => category === 'all' || bookingCategory(b) === category);
+  const visible = forListing.filter(b => category === 'all' || (category === 'current-upcoming'
+    ? ['active', 'upcoming'].includes(bookingCategory(b)) : bookingCategory(b) === category));
   list.replaceChildren();
   if (!visible.length) list.append(element('p', 'status', 'No reservations match this filter.'));
   for (const booking of visible) {
@@ -45,7 +47,7 @@ function draw() {
       actions.append(review);
     }
     if (!owner && canPay(booking)) {
-      const pay = element('a', 'button', booking.payment_status === 'demo_failed' ? 'Retry demo payment' : 'Complete demo payment');
+      const pay = element('a', 'button', booking.payment_status === 'demo_failed' ? 'Retry payment' : 'Complete payment');
       pay.href = `checkout.html?${new URLSearchParams({ booking: booking.id })}`;
       actions.append(pay);
     }
@@ -54,12 +56,12 @@ function draw() {
       cancel.type = 'button'; cancel.disabled = busy;
       cancel.addEventListener('click', async () => {
         // Browser confirmation provides keyboard access and focus management.
-        if (busy || !window.confirm(`Cancel reservation ${booking.id}? The spot will be released. Any demo-paid amount is marked demo-refunded; no real refund occurs.`)) return;
+        if (busy || !window.confirm(`Cancel reservation ${booking.id}? The spot will be released. Any paid amount is marked refunded; no real refund occurs.`)) return;
         setBusy(true);
         status.textContent = 'Cancelling reservation…';
         try {
           await cancelBooking(booking.id);
-          await load('Reservation cancelled. The slot is released. Any demo refund is simulated; no real money moves.');
+          await load('Reservation cancelled. The slot is released. Any refund is simulated; no real money moves.');
         } catch (error) { status.textContent = `${error.message} Refresh to check the current status; retrying cancellation is safe.`; }
         finally { setBusy(false); }
       });

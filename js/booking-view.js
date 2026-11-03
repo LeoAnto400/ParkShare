@@ -11,7 +11,7 @@ export function bookingDetails(booking) {
     ['Vehicle', `${booking.vehicle_type} · ${booking.vehicle_registration}`],
     ['Hourly rate', money(booking.hourly_rate)], ['Owner parking amount', money(booking.parking_subtotal)],
     [booking.pricing_model === 'inclusive_v1' ? 'Included platform fee (5% of total)' : 'Service fee (5% added under original pricing)', money(booking.service_fee)], ['Total', money(booking.total)],
-    ['Reservation', booking.status], ['Demo payment', paymentLabels[booking.payment_status] || 'Unavailable — run migration 005']
+    ['Reservation', booking.status], ['Payment', paymentLabels[booking.payment_status] || 'Unavailable — run migration 005']
   ];
   for (const [label, value] of values) details.append(element('dt', '', label), element('dd', '', value));
   const section = element('div');
@@ -21,13 +21,13 @@ export function bookingDetails(booking) {
 }
 export function historyView(events) {
   const section = element('section', 'payment-history');
-  section.append(element('h2', '', 'Demo payment history'));
-  if (!events.length) section.append(element('p', '', 'No simulated payment attempts recorded.'));
+  section.append(element('h2', '', 'Payment history'));
+  if (!events.length) section.append(element('p', '', 'No payment attempts recorded.'));
   const list = element('ul');
   for (const event of events) {
     list.append(element('li', '', `${indianDisplay(event.created_at)} · ${paymentLabels[event.outcome] || event.outcome} · ${money(event.amount)} · Receipt ${event.id}`));
   }
-  section.append(list, element('p', 'muted', 'Demo payment — no real money is collected. Refund entries are simulations only.'));
+  section.append(list, element('p', 'muted', 'No real money is collected. Refund entries are simulations only.'));
   return section;
 }
 

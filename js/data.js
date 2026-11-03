@@ -81,7 +81,10 @@ async function readSpaces(id) {
     data = await requestJSON(url, { headers: { apikey: SUPABASE_PUBLISHABLE_KEY } });
   }
   if (!Array.isArray(data)) throw new Error('Expected a list of parking spaces from the data source.');
-  const spaces = data.map(item => validate(base ? mapRow(item) : item));
+  // Public browsing shows only listings created by an owner. Ownerless seed rows
+  // stay in the database for migration history, but never appear as real spaces.
+  const ownerRows = base ? data.filter(item => item.owner_id != null) : data;
+  const spaces = ownerRows.map(item => validate(base ? mapRow(item) : item));
   if (new Set(spaces.map(space => space.id)).size !== spaces.length) throw new Error('Listing IDs must be unique.');
   // Batch rating reads in groups of 100, never one AJAX request per card.
   if (base) {

@@ -4,9 +4,7 @@ import { element, parkingImage } from './ui.js';
 import { scheduleView } from './schedule.js';
 import { locationActions } from './location.js';
 import { showReviews } from './reviews.js';
-import { request } from './booking-data.js';
 import { money, previewPrice } from './booking-rules.js';
-import { indiaToday, monthRange } from './earning-periods.js';
 import { indianTimeToUTC, indianDisplay } from './booking-rules.js';
 import { loadBlocks, createBlock, deleteBlock, loadEntryInstructions } from './owner-extras.js';
 
@@ -14,35 +12,7 @@ const id = new URLSearchParams(location.search).get('id');
 const status = document.querySelector('#owner-detail-status');
 const detail = document.querySelector('#owner-detail');
 const panels = document.querySelector('#owner-space-panels');
-const form = document.querySelector('#period-form');
-const periodStatus = document.querySelector('#period-status');
-const results = document.querySelector('#period-results');
-let ready = false, busy = false;
-async function loadPeriods() {
-  if (!ready || busy || !form.reportValidity()) return;
-  busy = true; form.querySelector('button').disabled = true;
-  results.replaceChildren(); periodStatus.textContent = 'Loading daily and monthly earnings…';
-  try {
-    const day = form.elements.day.value, month = form.elements.month.value;
-    const range = monthRange(month);
-    const reports = await Promise.all([
-      request('rpc/owner_earnings', { p_space_id: id, p_from: day, p_to: day }, true),
-      request('rpc/owner_earnings', { p_space_id: id, p_from: range.from, p_to: range.to }, true)
-    ]);
-    for (const [index, report] of reports.entries()) {
-      const card = element('article', 'metric');
-      card.append(element('h3', '', index === 0 ? `Daily · ${day}` : `Monthly · ${month}`));
-      for (const [label, value] of [['Owner earnings',report.totals.completed_owner],['Platform fees on completed bookings',report.totals.completed_platform],
-        ['Owner amount pending completion',report.totals.pending_owner],['Refunded driver total (excluded)',report.totals.refunded_total]])
-        card.append(element('p', '', `${label}: ${money(value)}`));
-      card.append(element('p', 'muted', `${report.totals.booking_count} reservations in this arrival-date period.`));
-      results.append(card);
-    }
-    periodStatus.textContent = 'Amounts use stored booking prices. Unpaid, failed and cancelled bookings do not count as earnings.';
-  } catch (error) { periodStatus.textContent = `${error.message} Use Update earnings to retry.`; }
-  finally { busy = false; form.querySelector('button').disabled = false; }
-}
-form.addEventListener('submit', event => { event.preventDefault(); loadPeriods(); });
+let ready = false;
 // ---- Blocked periods: list, add and remove through guarded RPCs ----
 const blockForm = document.querySelector('#block-form');
 const blockStatus = document.querySelector('#block-status');
@@ -122,10 +92,20 @@ try {
     entry.append(entryText); detail.append(entry);
     loadEntryInstructions(id).then(text => { entryText.textContent = text || 'None yet. Add them with “Edit this space”; drivers see them only after confirming a booking.'; entryText.className = text ? '' : 'muted'; })
       .catch(() => { entryText.textContent = 'Could not load entry instructions. Reload to retry.'; });
-    const reviews = element('section'); detail.append(reviews);
+    const reviews = element('section'); reviews.id = 'reviews-section';
+    const reservations = document.querySelector('#reservations-section');
+    // Keep the gallery full width, then pair the reservation list with space details.
+    const galleryIndex = [...detail.children].indexOf(gallery);
+    const right = element('div', 'owner-space-details');
+    [...detail.children].slice(galleryIndex + 1).forEach(node => right.append(node));
+    const left = element('div', 'owner-space-reservations'); left.append(reservations);
+    const overview = element('div', 'owner-space-overview'); overview.append(left, right);
+    detail.append(overview);
+    const blocks = document.querySelector('#blocks-section');
+    const earnings = document.querySelector('#earnings-section');
+    panels.append(blocks, reviews, earnings);
     detail.hidden = panels.hidden = false; status.textContent = ''; ready = true;
-    const today = indiaToday(); form.elements.day.value = today; form.elements.month.value = today.slice(0,7);
-    await Promise.all([loadPeriods(), showReviews({ id }, reviews), drawBlocks()]);
+    await Promise.all([showReviews({ id }, reviews), drawBlocks()]);
     if (location.hash === '#blocks-section') document.querySelector('#blocks-section').scrollIntoView();
   }
 } catch (error) {

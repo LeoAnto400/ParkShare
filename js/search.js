@@ -46,7 +46,9 @@ function updateResults() {
   if (sort.value === 'asc') matches.sort((a, b) => a.price - b.price);
   if (sort.value === 'desc') matches.sort((a, b) => b.price - a.price);
   count.textContent = `${matches.length} ${matches.length === 1 ? 'space' : 'spaces'}${location ? ` near ${location}` : ' to explore'}`;
-  status.textContent = matches.length ? '' : 'No spaces match just yet. Try another location or reset your filters.';
+  status.textContent = matches.length ? '' : spaces.length
+    ? 'No spaces match just yet. Try another location or reset your filters.'
+    : 'No owner listings have been published yet.';
   renderCards(results, matches, location, availableIds ? { arrival: arrivalInput.value, departure: departureInput.value, vehicle: vehicle.value } : { vehicle: vehicle.value });
 }
 
@@ -110,7 +112,7 @@ async function refreshPeriod() {
   } catch (error) { periodNote.textContent = `${error.message} The period filter is not applied.`; updateResults(); return; }
   if (isDemo) {
     availableIds = new Set(spaces.filter(space => fitsSchedule(space.openingSchedule, Date.parse(arrival), Date.parse(departure))).map(space => space.id));
-    periodNote.textContent = 'Demo mode: opening hours checked only; existing bookings are not.';
+    periodNote.textContent = 'Preview mode checks opening hours only; existing reservations are not included.';
     updateResults(); return;
   }
   periodNote.textContent = 'Checking which spaces are free for the whole period…';

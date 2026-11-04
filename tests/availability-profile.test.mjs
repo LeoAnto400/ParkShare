@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitsSchedule, freeSlots, dayWindow, istDate, istTime } from '../js/availability.js';
+import { fitsSchedule, freeSlots, dayWindow, istDate, istTime, upcomingBusy } from '../js/availability.js';
 import { normalizePhone, validateProfile } from '../js/profile-rules.js';
 import { readFile } from 'node:fs/promises';
 
@@ -62,4 +62,15 @@ test('owner block validation and new listing fields', async () => {
     { max_vehicle_height_m: 10.5 }, { max_vehicle_height_m: 2.123 }, { max_vehicle_length_m: Number.NaN }]) {
     assert.throws(() => owner.validateListing({ ...row, ...patch }), undefined, JSON.stringify(patch));
   }
+});
+
+test('bookings and blocks that have already ended are not shown as unavailable', () => {
+  const now = ist('2026-11-04T09:10');
+  const busy = [
+    { start: ist('2026-11-04T04:59'), end: ist('2026-11-04T05:59'), kind: 'booked' },   // finished this morning
+    { start: ist('2026-11-04T09:00'), end: ist('2026-11-04T10:00'), kind: 'booked' },   // in progress
+    { start: ist('2026-11-04T12:00'), end: ist('2026-11-04T14:00'), kind: 'blocked' },  // later today
+  ];
+  assert.deepEqual(upcomingBusy(busy, now).map(b => istTime(b.start)), ['09:00', '12:00']);
+  assert.deepEqual(upcomingBusy([{ start: 0, end: now, kind: 'booked' }], now), [], 'ending exactly now is over');
 });

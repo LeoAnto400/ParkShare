@@ -36,6 +36,11 @@ export function fitsSchedule(schedule, startMs, endMs) {
   return true;
 }
 
+/** Booked/blocked ranges that still matter: anything that has already ended no longer makes the space unavailable. */
+export function upcomingBusy(busy, now = Date.now()) {
+  return busy.filter(taken => taken.end > now);
+}
+
 /** Free ranges inside one day's opening window after removing busy intervals and the past. */
 export function freeSlots(schedule, busy, date, now = Date.now()) {
   const window = dayWindow(schedule, date);
@@ -78,7 +83,7 @@ export function availabilityView(schedule, busy, { days = 7, now = Date.now(), v
       const free = freeSlots(schedule, today, date, Math.ceil(now / 900000) * 900000);
       if (!free.length) chips.append(element('span', 'chip slot-closed', 'No free time left'));
       free.forEach(slot => chips.append(element('span', 'chip slot-free', `Free ${rangeLabel(slot, date)}`)));
-      today.forEach(taken => chips.append(element('span', 'chip slot-taken',
+      upcomingBusy(today, now).forEach(taken => chips.append(element('span', 'chip slot-taken',
         `Unavailable ${rangeLabel(taken, date)} · ${taken.kind === 'blocked' ? 'owner blocked' : 'booked'}`)));
     }
     item.append(chips);
